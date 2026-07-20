@@ -190,6 +190,7 @@
     .badge-travel { background: rgba(245,158,11,0.2); color: #fbbf24; }
     .badge-materials { background: rgba(16,185,129,0.2); color: #34d399; }
     .badge-other { background: rgba(139,156,179,0.2); color: var(--text-muted); }
+    .badge-afterhours { background: rgba(239,68,68,0.2); color: #f87171; }
     .row-actions { display: flex; gap: 6px; opacity: 0.75; flex-wrap: wrap; }
     tr:hover .row-actions { opacity: 1; }
     .empty { text-align: center; padding: 48px 20px; color: var(--text-muted); }
@@ -317,11 +318,7 @@
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
         Dashboard
       </button>
-      <button class="nav-btn" data-page="timelog">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        Time & Labor
-      </button>
-      <button class="nav-btn" data-page="invoices">
+<button class="nav-btn" data-page="invoices">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
         Invoices
       </button>
@@ -356,7 +353,6 @@
             <p>Overview + quick labor / travel entry</p>
           </div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <button class="btn btn-secondary" onclick="navigate('timelog')">Time Log</button>
             <button class="btn btn-primary" onclick="navigate('create')">New Invoice</button>
           </div>
         </div>
@@ -365,7 +361,7 @@
 
         <!-- QUICK LABOR / TRAVEL ENTRY -->
         <div class="card quick-log-card">
-          <h3>Quick Log — Labor, Travel & Expenses</h3>
+          <h3>Quick Log — Labor, Travel, After Hours & Expenses</h3>
           <div class="form-grid-4" style="margin-bottom:12px">
             <div class="form-group">
               <label>Date</label>
@@ -376,6 +372,7 @@
               <select id="ql-type">
                 <option value="labor">Labor / Hours</option>
                 <option value="travel">Travel Time</option>
+                <option value="afterhours">After Hours</option>
                 <option value="mileage">Mileage</option>
                 <option value="materials">Materials / Parts</option>
                 <option value="other">Other Expense</option>
@@ -444,48 +441,7 @@
         </div>
       </div>
 
-      <!-- ==================== TIME LOG PAGE ==================== -->
-      <div id="page-timelog" class="page hidden">
-        <div class="page-header">
-          <div>
-            <h2>Time & Labor Log</h2>
-            <p>Track hours, travel, mileage, and expenses</p>
-          </div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <button class="btn btn-success" id="btn-invoice-selected-tl" onclick="invoiceSelectedEntries()" disabled>Invoice Selected</button>
-            <button class="btn btn-primary" onclick="navigate('dashboard')">Quick Log on Dashboard</button>
-          </div>
-        </div>
-
-        <div class="stats" id="timelog-stats"></div>
-
-        <div class="filters">
-          <div class="search-box">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-            <input type="text" id="search-time" placeholder="Search description, client, notes..." oninput="renderTimeLog()" />
-          </div>
-          <select id="filter-time-type" onchange="renderTimeLog()" style="width:auto;min-width:130px">
-            <option value="all">All Types</option>
-            <option value="labor">Labor</option>
-            <option value="travel">Travel</option>
-            <option value="mileage">Mileage</option>
-            <option value="materials">Materials</option>
-            <option value="other">Other</option>
-          </select>
-          <select id="filter-time-status" onchange="renderTimeLog()" style="width:auto;min-width:130px">
-            <option value="all">All Status</option>
-            <option value="unbilled">Unbilled</option>
-            <option value="billed">Billed</option>
-          </select>
-          <select id="filter-time-client" onchange="renderTimeLog()" style="width:auto;min-width:150px">
-            <option value="all">All Clients</option>
-          </select>
-        </div>
-
-        <div class="card" style="padding:0;overflow:hidden">
-          <div id="timelog-list"></div>
-        </div>
-      </div>
+      
 
       <!-- ==================== INVOICES ==================== -->
       <div id="page-invoices" class="page hidden">
@@ -690,12 +646,12 @@
                 <input type="number" id="biz-travel-rate" value="50" min="0" step="0.01" />
               </div>
               <div class="form-group">
-                <label>Mileage Rate ($/mi)</label>
-                <input type="number" id="biz-mileage-rate" value="0.70" min="0" step="0.01" />
+                <label>After Hours Rate ($/hr)</label>
+                <input type="number" id="biz-afterhours-rate" value="112.50" min="0" step="0.01" />
               </div>
               <div class="form-group">
-                <label>Default Hours Step</label>
-                <input type="number" id="biz-hour-step" value="0.25" min="0.05" step="0.05" />
+                <label>Mileage Rate ($/mi)</label>
+                <input type="number" id="biz-mileage-rate" value="0.70" min="0" step="0.01" />
               </div>
             </div>
           </div>
@@ -725,7 +681,7 @@
 
   <!-- Client Modal -->
   <div id="client-modal" class="modal-overlay hidden">
-    <div class="modal" style="max-width:500px">
+    <div class="modal" style="max-width:640px">
       <div class="modal-header">
         <h3 id="client-modal-title">Add Client</h3>
         <button class="btn btn-icon btn-secondary" onclick="closeClientModal()">
@@ -733,22 +689,52 @@
         </button>
       </div>
       <div class="modal-body">
-        <div class="form-group" style="margin-bottom:16px">
-          <label>Name *</label>
-          <input type="text" id="client-name" />
+        <div class="form-grid" style="margin-bottom:16px">
+          <div class="form-group">
+            <label>Name *</label>
+            <input type="text" id="client-name" />
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="client-email" />
+          </div>
+          <div class="form-group">
+            <label>Phone</label>
+            <input type="text" id="client-phone" />
+          </div>
+          <div class="form-group">
+            <label>Address</label>
+            <input type="text" id="client-address" />
+          </div>
         </div>
-        <div class="form-group" style="margin-bottom:16px">
-          <label>Email</label>
-          <input type="email" id="client-email" />
+        <h4 style="font-size:14px;margin:16px 0 12px;color:var(--text-muted);border-bottom:1px solid var(--border);padding-bottom:8px">Client Rates (blank = use global defaults)</h4>
+        <div class="form-grid-3" style="margin-bottom:8px">
+          <div class="form-group">
+            <label>Labor Rate ($/hr)</label>
+            <input type="number" id="client-labor" min="0" step="0.01" placeholder="e.g. 85" />
+          </div>
+          <div class="form-group">
+            <label>Travel Time ($/hr)</label>
+            <input type="number" id="client-travel" min="0" step="0.01" placeholder="e.g. 55" />
+          </div>
+          <div class="form-group">
+            <label>After Hours ($/hr)</label>
+            <input type="number" id="client-afterhours" min="0" step="0.01" placeholder="e.g. 125" />
+          </div>
+          <div class="form-group">
+            <label>Tax Rate Labor %</label>
+            <input type="number" id="client-tax-labor" min="0" step="0.01" placeholder="e.g. 0 or 8.25" />
+          </div>
+          <div class="form-group">
+            <label>Tax Rate Parts %</label>
+            <input type="number" id="client-tax-parts" min="0" step="0.01" placeholder="e.g. 8.25" />
+          </div>
+          <div class="form-group">
+            <label>Mileage ($/mi)</label>
+            <input type="number" id="client-mileage" min="0" step="0.01" placeholder="optional" />
+          </div>
         </div>
-        <div class="form-group" style="margin-bottom:16px">
-          <label>Phone</label>
-          <input type="text" id="client-phone" />
-        </div>
-        <div class="form-group">
-          <label>Address</label>
-          <textarea id="client-address" rows="3"></textarea>
-        </div>
+        <p style="font-size:12px;color:var(--text-muted)">Tax Labor → labor/travel/after-hours lines. Tax Parts → materials/parts.</p>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeClientModal()">Cancel</button>
@@ -832,7 +818,7 @@
   <div id="print-area" class="hidden"></div>
 
   <script>
-    const STORAGE_KEY = 'invoiceflow_data_v2';
+    const STORAGE_KEY = 'invoiceflow_data_v3';
     let state = {
       business: {
         name: '', email: '', phone: '', website: '', address: '',
@@ -840,8 +826,8 @@
         terms: 'Payment is due within 30 days of invoice date. Thank you for your business!',
         laborRate: 75,
         travelRate: 50,
-        mileageRate: 0.70,
-        hourStep: 0.25
+        afterHoursRate: 112.50,
+        mileageRate: 0.70
       },
       clients: [],
       invoices: [],
@@ -861,8 +847,10 @@
           const data = JSON.parse(raw);
           state = { ...state, ...data };
           if (!state.timeEntries) state.timeEntries = [];
+          state.clients = (state.clients || []).map(c => ({ laborRate: null, travelRate: null, afterHoursRate: null, taxRateLabor: null, taxRateParts: null, mileageRate: null, ...c }));
           if (!state.business.laborRate) state.business.laborRate = 75;
           if (!state.business.travelRate) state.business.travelRate = 50;
+          if (state.business.afterHoursRate == null) state.business.afterHoursRate = 112.50;
           if (!state.business.mileageRate) state.business.mileageRate = 0.70;
           state.selectedTimeIds = new Set();
         }
@@ -911,7 +899,7 @@
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
     function typeLabel(t) {
-      return { labor:'Labor', travel:'Travel', mileage:'Mileage', materials:'Materials', other:'Other' }[t] || t;
+      return { labor:'Labor', travel:'Travel', afterhours:'After Hours', mileage:'Mileage', materials:'Materials', other:'Other' }[t] || t;
     }
 
     // ---------- Navigation ----------
@@ -924,8 +912,7 @@
       if (btn) btn.classList.add('active');
       $('sidebar').classList.remove('open');
       if (page === 'dashboard') renderDashboard();
-      if (page === 'timelog') renderTimeLog();
-      if (page === 'invoices') renderInvoices();
+            if (page === 'invoices') renderInvoices();
       if (page === 'create') initCreateForm();
       if (page === 'clients') renderClients();
       if (page === 'settings') loadSettingsForm();
@@ -965,6 +952,9 @@
       } else if (t === 'travel') {
         qtyL.textContent = 'Hours'; rateL.textContent = 'Rate ($/hr)';
         $('ql-rate').value = state.business.travelRate || 50;
+      } else if (t === 'afterhours') {
+        qtyL.textContent = 'Hours'; rateL.textContent = 'Rate ($/hr)';
+        $('ql-rate').value = state.business.afterHoursRate || 112.50;
       } else if (t === 'mileage') {
         qtyL.textContent = 'Miles'; rateL.textContent = 'Rate ($/mi)';
         $('ql-rate').value = state.business.mileageRate || 0.70;
@@ -1188,105 +1178,7 @@
     }
 
     // ---------- Full Time Log page ----------
-    function renderTimeLog() {
-      // Stats
-      const all = state.timeEntries;
-      const unbilled = all.filter(e => !e.billed);
-      const billed = all.filter(e => e.billed);
-      const laborHrs = all.filter(e => e.type === 'labor').reduce((s,e) => s + (Number(e.qty)||0), 0);
-      const travelHrs = all.filter(e => e.type === 'travel').reduce((s,e) => s + (Number(e.qty)||0), 0);
-      const miles = all.filter(e => e.type === 'mileage').reduce((s,e) => s + (Number(e.qty)||0), 0);
-      const unbilledAmt = unbilled.reduce((s,e) => s + calcEntryAmount(e), 0);
-
-      $('timelog-stats').innerHTML = `
-        <div class="stat-card purple">
-          <div class="stat-label">Unbilled</div>
-          <div class="stat-value">${money(unbilledAmt)}</div>
-          <div class="stat-sub">${unbilled.length} entries</div>
-        </div>
-        <div class="stat-card blue">
-          <div class="stat-label">Labor Hours</div>
-          <div class="stat-value">${laborHrs.toFixed(1)}</div>
-          <div class="stat-sub">all time</div>
-        </div>
-        <div class="stat-card orange">
-          <div class="stat-label">Travel Hours</div>
-          <div class="stat-value">${travelHrs.toFixed(1)}</div>
-          <div class="stat-sub">all time</div>
-        </div>
-        <div class="stat-card teal">
-          <div class="stat-label">Mileage</div>
-          <div class="stat-value">${miles.toFixed(0)}</div>
-          <div class="stat-sub">miles</div>
-        </div>
-        <div class="stat-card green">
-          <div class="stat-label">Billed Entries</div>
-          <div class="stat-value">${billed.length}</div>
-          <div class="stat-sub">${money(billed.reduce((s,e)=>s+calcEntryAmount(e),0))}</div>
-        </div>`;
-
-      // Client filter options
-      const clientNames = [...new Set(all.map(e => e.clientName).filter(Boolean))].sort();
-      const sel = $('filter-time-client');
-      const cur = sel.value;
-      sel.innerHTML = '<option value="all">All Clients</option>' +
-        clientNames.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
-      sel.value = cur || 'all';
-
-      // Filter list
-      let list = [...all];
-      const q = ($('search-time')?.value || '').toLowerCase().trim();
-      const typeF = $('filter-time-type')?.value || 'all';
-      const statusF = $('filter-time-status')?.value || 'all';
-      const clientF = $('filter-time-client')?.value || 'all';
-      if (q) list = list.filter(e =>
-        (e.desc||'').toLowerCase().includes(q) ||
-        (e.clientName||'').toLowerCase().includes(q) ||
-        (e.notes||'').toLowerCase().includes(q)
-      );
-      if (typeF !== 'all') list = list.filter(e => e.type === typeF);
-      if (statusF === 'unbilled') list = list.filter(e => !e.billed);
-      if (statusF === 'billed') list = list.filter(e => e.billed);
-      if (clientF !== 'all') list = list.filter(e => e.clientName === clientF);
-      list.sort((a,b) => (b.date||'').localeCompare(a.date||''));
-
-      if (!list.length) {
-        $('timelog-list').innerHTML = '<div class="empty"><h3>No entries found</h3><p>Log time from the Dashboard</p></div>';
-        return;
-      }
-
-      $('timelog-list').innerHTML = `
-        <table class="invoice-table">
-          <thead><tr>
-            <th class="checkbox-cell"></th>
-            <th>Date</th><th>Type</th><th>Client</th><th>Description</th>
-            <th>Qty</th><th>Rate</th><th>Amount</th><th>Status</th><th style="width:130px">Actions</th>
-          </tr></thead>
-          <tbody>
-            ${list.map(e => `
-              <tr>
-                <td class="checkbox-cell">
-                  ${!e.billed ? `<input type="checkbox" class="time-check" data-id="${e.id}" ${state.selectedTimeIds.has(e.id)?'checked':''} onchange="toggleTimeSelect('${e.id}', this.checked)">` : ''}
-                </td>
-                <td class="mono">${e.date||'—'}</td>
-                <td><span class="badge badge-${e.type}">${typeLabel(e.type)}</span></td>
-                <td>${esc(e.clientName||'—')}</td>
-                <td>${esc(e.desc)}${e.notes ? '<br><span style="font-size:12px;color:var(--text-muted)">'+esc(e.notes)+'</span>' : ''}</td>
-                <td class="mono">${e.qty}</td>
-                <td class="mono">${money(e.rate)}</td>
-                <td class="mono">${money(calcEntryAmount(e))}</td>
-                <td><span class="badge badge-${e.billed?'billed':'unbilled'}">${e.billed?'Billed':'Unbilled'}</span></td>
-                <td>
-                  <div class="row-actions">
-                    ${!e.billed ? `<button class="btn btn-sm btn-secondary" onclick="editTimeEntry('${e.id}')">Edit</button>` : ''}
-                    <button class="btn btn-sm btn-danger" onclick="deleteTimeEntry('${e.id}')">✕</button>
-                  </div>
-                </td>
-              </tr>`).join('')}
-          </tbody>
-        </table>`;
-      updateInvoiceSelectedBtn();
-    }
+    function renderTimeLog() { /* removed Time Log page */ }
 
     function editTimeEntry(id) {
       const e = state.timeEntries.find(x => x.id === id);
@@ -1318,7 +1210,7 @@
       e.notes = $('te-notes').value.trim();
       saveState();
       closeTimeModal();
-      renderTimeLog();
+      renderDashboard();
       toast('Entry updated');
     }
     function deleteTimeEntry(id) {
@@ -1326,8 +1218,7 @@
       state.timeEntries = state.timeEntries.filter(e => e.id !== id);
       state.selectedTimeIds.delete(id);
       saveState();
-      if ($('page-timelog') && !$('page-timelog').classList.contains('hidden')) renderTimeLog();
-      else renderDashboard();
+      renderDashboard();
       toast('Entry deleted');
     }
 
@@ -1582,13 +1473,21 @@
         return;
       }
       $('clients-list').innerHTML = `<table class="invoice-table">
-        <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Address</th><th style="width:120px">Actions</th></tr></thead>
+        <thead><tr>
+          <th>Name</th><th>Contact</th>
+          <th>Labor</th><th>Travel</th><th>After Hrs</th>
+          <th>Tax Labor</th><th>Tax Parts</th>
+          <th style="width:120px">Actions</th>
+        </tr></thead>
         <tbody>
           ${state.clients.map(c => `<tr>
             <td><strong>${esc(c.name)}</strong></td>
-            <td>${esc(c.email || '—')}</td>
-            <td>${esc(c.phone || '—')}</td>
-            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.address || '—')}</td>
+            <td style="font-size:13px">${esc(c.email || c.phone || '—')}</td>
+            <td class="mono">${c.laborRate != null ? '$'+c.laborRate : '—'}</td>
+            <td class="mono">${c.travelRate != null ? '$'+c.travelRate : '—'}</td>
+            <td class="mono">${c.afterHoursRate != null ? '$'+c.afterHoursRate : '—'}</td>
+            <td class="mono">${c.taxRateLabor != null ? c.taxRateLabor+'%' : '—'}</td>
+            <td class="mono">${c.taxRateParts != null ? c.taxRateParts+'%' : '—'}</td>
             <td><div class="row-actions">
               <button class="btn btn-sm btn-secondary" onclick="editClient('${c.id}')">Edit</button>
               <button class="btn btn-sm btn-danger" onclick="deleteClient('${c.id}')">✕</button>
@@ -1605,9 +1504,18 @@
         $('client-email').value = c?.email || '';
         $('client-phone').value = c?.phone || '';
         $('client-address').value = c?.address || '';
+        if ($('client-labor')) {
+          $('client-labor').value = c?.laborRate ?? '';
+          $('client-travel').value = c?.travelRate ?? '';
+          $('client-afterhours').value = c?.afterHoursRate ?? '';
+          $('client-tax-labor').value = c?.taxRateLabor ?? '';
+          $('client-tax-parts').value = c?.taxRateParts ?? '';
+          $('client-mileage').value = c?.mileageRate ?? '';
+        }
       } else {
         $('client-name').value = ''; $('client-email').value = '';
         $('client-phone').value = ''; $('client-address').value = '';
+        ['client-labor','client-travel','client-afterhours','client-tax-labor','client-tax-parts','client-mileage'].forEach(i => { if ($(i)) $(i).value = ''; });
       }
       $('client-modal').classList.remove('hidden');
     }
@@ -1619,12 +1527,19 @@
     function saveClient() {
       const name = $('client-name').value.trim();
       if (!name) return toast('Name required', 'error');
+      const numOrNull = v => { if (v === '' || v == null) return null; const n = Number(v); return isNaN(n) ? null : n; };
       const data = {
         id: state.editingClientId || uid(),
         name,
         email: $('client-email').value.trim(),
         phone: $('client-phone').value.trim(),
-        address: $('client-address').value.trim()
+        address: $('client-address').value.trim(),
+        laborRate: numOrNull($('client-labor').value),
+        travelRate: numOrNull($('client-travel').value),
+        afterHoursRate: numOrNull($('client-afterhours').value),
+        taxRateLabor: numOrNull($('client-tax-labor').value),
+        taxRateParts: numOrNull($('client-tax-parts').value),
+        mileageRate: numOrNull($('client-mileage').value)
       };
       if (state.editingClientId) {
         const idx = state.clients.findIndex(c => c.id === state.editingClientId);
@@ -1658,8 +1573,8 @@
       $('biz-terms').value = b.terms || '';
       $('biz-labor-rate').value = b.laborRate ?? 75;
       $('biz-travel-rate').value = b.travelRate ?? 50;
+      $('biz-afterhours-rate').value = b.afterHoursRate ?? 112.50;
       $('biz-mileage-rate').value = b.mileageRate ?? 0.70;
-      $('biz-hour-step').value = b.hourStep ?? 0.25;
     }
     function saveSettings() {
       state.business = {
@@ -1675,8 +1590,8 @@
         terms: $('biz-terms').value.trim(),
         laborRate: Number($('biz-labor-rate').value) || 75,
         travelRate: Number($('biz-travel-rate').value) || 50,
-        mileageRate: Number($('biz-mileage-rate').value) || 0.70,
-        hourStep: Number($('biz-hour-step').value) || 0.25
+        afterHoursRate: Number($('biz-afterhours-rate').value) || 112.50,
+        mileageRate: Number($('biz-mileage-rate').value) || 0.70
       };
       saveState();
       toast('Settings saved');

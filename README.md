@@ -22,7 +22,7 @@ A single-file web app — no install, no account, no server. Just open it in you
 - Default rates for labor / travel / mileage (configurable)
 - Unbilled entry list with multi-select
 - **One-click “Create Invoice from Selected”** — turns time entries into invoice line items and marks them billed
-- Full Time Log page with search & filters
+- Unbilled entries on Dashboard with multi-select
 
 ### Privacy & Data
 - 100% local — everything stored in browser `localStorage`
@@ -59,6 +59,7 @@ Double-click `OPEN-ME.command` (macOS) — it starts a local server and prints t
 |--------------------|-----------|
 | Labor rate         | $75 / hr  |
 | Travel rate        | $50 / hr  |
+| After hours rate   | $112.50 / hr |
 | Mileage rate       | $0.70 / mi|
 | Invoice prefix     | INV-      |
 | Payment terms      | Net 30    |
