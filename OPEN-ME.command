@@ -1,13 +1,19 @@
 #!/bin/bash
 cd "$(dirname "$0")"
+clear
 echo ""
-echo "  InvoiceFlow is starting..."
+echo "  InvoiceFlow — Dropbox file storage"
+echo "  =================================="
 echo ""
-echo "  Open this address in your browser:"
+echo "  Data is saved to data.json in this folder"
+echo "  (Dropbox will sync it to the cloud)."
 echo ""
-echo "      http://127.0.0.1:8765"
-echo ""
-echo "  (Leave this window open while you use the app)"
+echo "  Opening http://127.0.0.1:8765 ..."
+echo "  Leave this window open while you work."
 echo "  Press Ctrl+C when finished."
 echo ""
-python3 -m http.server 8765
+
+# Open browser shortly after server can accept connections
+(sleep 0.8 && open "http://127.0.0.1:8765") &
+
+exec python3 server.py

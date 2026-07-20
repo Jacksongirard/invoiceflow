@@ -5,3 +5,5 @@ node_modules/
 .idea/
 *.swp
 .env
+data.json
+data.json.tmp
