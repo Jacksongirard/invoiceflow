@@ -352,7 +352,7 @@
         Settings
       </button>
       <div class="sidebar-footer">
-        Data saved locally<br>
+        Local + sync file<br>
         <span id="last-saved">—</span>
       </div>
     </aside>
@@ -613,17 +613,37 @@
           </div>
 
           <div class="settings-section">
-            <h3>Data Management</h3>
-            <p id="storage-mode-help" style="color:var(--text-muted);font-size:0.9rem;margin:0 0 12px">
-              Checking storage…
+            <h3>Multi-Device Sync</h3>
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.5">
+              Your data lives in this browser by default. To see the <strong>same invoices & clients on every computer</strong>,
+              link a single JSON file inside a cloud folder (Dropbox, iCloud Drive, OneDrive, or Google Drive desktop app).
+              Every save writes to that file; other computers load from it.
             </p>
-            <div style="display:flex;gap:12px;flex-wrap:wrap">
-              <button class="btn btn-secondary" onclick="exportData()">Export All Data (JSON)</button>
+            <div id="sync-status" class="card" style="padding:14px 16px;margin-bottom:14px;background:var(--surface2)">
+              <div style="font-size:13px"><strong>Status:</strong> <span id="sync-status-text">Not linked — data is local only</span></div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:4px" id="sync-status-detail"></div>
+            </div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+              <button class="btn btn-primary" onclick="linkSyncFile()">Link / Create Sync File</button>
+              <button class="btn btn-secondary" onclick="pullFromSyncFile()">Load from Sync File</button>
+              <button class="btn btn-secondary" onclick="pushToSyncFile()">Save to Sync File Now</button>
+              <button class="btn btn-secondary" onclick="unlinkSyncFile()">Unlink</button>
+            </div>
+            <p style="font-size:12px;color:var(--text-muted);margin-bottom:20px;line-height:1.45">
+              <strong>Setup (once per computer):</strong> Put the file in a cloud-synced folder → click <em>Link / Create Sync File</em> →
+              choose that file (or save a new <code>invoiceflow-data.json</code> into the folder). Use Chrome or Edge for best results (file link is remembered).
+              On Safari, use Export on one Mac and Import on the other, or place the file in iCloud and Import it.
+            </p>
+            <h3 style="margin-top:8px">Manual Backup</h3>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px">
+              <button class="btn btn-secondary" onclick="exportData()">Export JSON Backup</button>
               <label class="btn btn-secondary" style="cursor:pointer">
-                Import Data
-                <input type="file" accept=".json" onchange="importData(event)" style="display:none" />
+                Import JSON Backup
+                <input type="file" accept=".json,application/json" onchange="importData(event)" style="display:none" />
               </label>
-              <button class="btn btn-danger" onclick="if(confirm('Delete ALL data? This cannot be undone.')) clearAllData()">Clear All Data</button>
+              <button class="btn btn-secondary" onclick="copyDataToClipboard()">Copy Data to Clipboard</button>
+              <button class="btn btn-secondary" onclick="pasteDataFromClipboard()">Paste Data from Clipboard</button>
+              <button class="btn btn-danger" onclick="if(confirm('Delete ALL data on THIS browser? Sync file is not deleted.')) clearAllData()">Clear Local Data</button>
             </div>
           </div>
         </div>
@@ -771,8 +791,6 @@
 
   <script>
     const STORAGE_KEY = 'invoiceflow_data_v3';
-    const FILE_API = '/api/data';
-    let fileStorageActive = false; // true when Dropbox data.json backend is available
     let state = {
       business: {
         name: '', email: '', phone: '', website: '', address: '',
@@ -793,133 +811,285 @@
       selectedTimeIds: new Set()
     };
 
-    function snapshot() {
+    // ---------- Persistence + Multi-device sync ----------
+    let syncFileHandle = null;
+    const IDB_NAME = 'invoiceflow_sync';
+    const IDB_STORE = 'handles';
+
+    function openIDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(IDB_NAME, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore(IDB_STORE);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+    async function idbSet(key, val) {
+      const db = await openIDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        tx.objectStore(IDB_STORE).put(val, key);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+    async function idbGet(key) {
+      const db = await openIDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE, 'readonly');
+        const req = tx.objectStore(IDB_STORE).get(key);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+    async function idbDel(key) {
+      const db = await openIDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        tx.objectStore(IDB_STORE).delete(key);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+
+    function serializeState() {
       return {
         business: state.business,
         clients: state.clients,
         invoices: state.invoices,
-        timeEntries: state.timeEntries,
-        nextInvNum: state.nextInvNum
+        timeEntries: state.timeEntries || [],
+        nextInvNum: state.nextInvNum,
+        updatedAt: new Date().toISOString(),
+        app: 'invoiceflow',
+        version: 3
       };
     }
-
-    function applyLoadedData(data) {
-      if (!data || typeof data !== 'object') return false;
-      const hasContent = data.business || (data.clients && data.clients.length) ||
-        (data.invoices && data.invoices.length) || (data.timeEntries && data.timeEntries.length);
-      if (!hasContent && data.nextInvNum == null) return false;
-      state = { ...state, ...data };
-      if (!state.timeEntries) state.timeEntries = [];
-      state.clients = (state.clients || []).map(c => ({
+    function applyData(data, { silent } = {}) {
+      if (!data || typeof data !== 'object') throw new Error('Invalid data');
+      state.business = { ...state.business, ...(data.business || {}) };
+      state.clients = (data.clients || []).map(c => ({
         laborRate: null, travelRate: null, afterHoursRate: null,
         taxRateLabor: null, taxRateParts: null, mileageRate: null, ...c
       }));
-      if (!state.business) state.business = {};
+      state.invoices = data.invoices || [];
+      state.timeEntries = data.timeEntries || [];
+      state.nextInvNum = data.nextInvNum || 1;
+      state.selectedTimeIds = new Set();
       if (!state.business.laborRate) state.business.laborRate = 75;
       if (!state.business.travelRate) state.business.travelRate = 50;
       if (state.business.afterHoursRate == null) state.business.afterHoursRate = 112.50;
       if (!state.business.mileageRate) state.business.mileageRate = 0.70;
-      state.selectedTimeIds = new Set();
+      // local cache
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState()));
+      updateLastSaved();
+      updateSyncStatusUI();
+      if (!silent) toast('Data loaded');
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY)
+          || localStorage.getItem('invoiceflow_data_v2')
+          || localStorage.getItem('invoiceflow_data_v1');
+        if (raw) applyData(JSON.parse(raw), { silent: true });
+      } catch (e) { console.error(e); }
+      updateLastSaved();
+      updateSyncStatusUI();
+    }
+
+    function saveState() {
+      try {
+        const toSave = serializeState();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+        updateLastSaved();
+        // Auto-push to linked sync file (debounce)
+        scheduleSyncPush();
+      } catch (e) { toast('Failed to save', 'error'); }
+    }
+
+    let _syncPushTimer = null;
+    function scheduleSyncPush() {
+      if (!syncFileHandle) return;
+      clearTimeout(_syncPushTimer);
+      _syncPushTimer = setTimeout(() => { pushToSyncFile({ quiet: true }); }, 600);
+    }
+
+    function updateLastSaved() {
+      const el = document.getElementById('last-saved');
+      if (el) el.textContent = 'Saved ' + new Date().toLocaleTimeString();
+    }
+
+    function updateSyncStatusUI() {
+      const t = document.getElementById('sync-status-text');
+      const d = document.getElementById('sync-status-detail');
+      if (!t) return;
+      if (syncFileHandle) {
+        t.innerHTML = '<span style="color:var(--success)">● Linked</span> — auto-saves to sync file';
+        d.textContent = (syncFileHandle.name ? ('File: ' + syncFileHandle.name) : 'File linked') +
+          ' · Keep this file inside Dropbox / iCloud / OneDrive so other PCs see it';
+      } else {
+        t.textContent = 'Not linked — data is local only on this browser';
+        d.textContent = 'Link a sync file (recommended) or use Export / Import between computers.';
+      }
+    }
+
+    async function ensureSyncPermission(handle, mode) {
+      if (!handle) return false;
+      const opts = { mode: mode || 'readwrite' };
+      if (handle.queryPermission) {
+        let p = await handle.queryPermission(opts);
+        if (p !== 'granted' && handle.requestPermission) p = await handle.requestPermission(opts);
+        return p === 'granted';
+      }
       return true;
     }
 
-    function loadFromLocalStorage() {
+    async function restoreSyncHandle() {
       try {
-        const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('invoiceflow_data_v1');
-        if (raw) return applyLoadedData(JSON.parse(raw));
-      } catch (e) { console.error(e); }
-      return false;
-    }
-
-    async function probeFileStorage() {
-      try {
-        const res = await fetch(FILE_API, { cache: 'no-store' });
-        if (!res.ok) return null;
-        return await res.json();
-      } catch {
-        return null;
+        if (!window.showOpenFilePicker) return; // unsupported
+        const handle = await idbGet('syncFile');
+        if (!handle) return;
+        const ok = await ensureSyncPermission(handle, 'readwrite');
+        if (!ok) return;
+        syncFileHandle = handle;
+        updateSyncStatusUI();
+        // Load from file if it has data (prefer file over stale local)
+        await pullFromSyncFile({ quiet: true, preferFileIfNewer: true });
+      } catch (e) {
+        console.warn('restoreSyncHandle', e);
       }
     }
 
-    function updateStorageHelp() {
-      const el = document.getElementById('storage-mode-help');
-      if (!el) return;
-      if (fileStorageActive) {
-        el.innerHTML = '<strong style="color:#34d399">Dropbox file storage is ON.</strong> ' +
-          'Data is written to <code>data.json</code> in your InvoiceFlow Dropbox folder and syncs to the cloud. ' +
-          'Always start the app with <code>OPEN-ME.command</code> / <code>OPEN-ME.bat</code> (not by double-clicking index.html).';
-      } else {
-        el.innerHTML = '<strong style="color:#fbbf24">Browser-only mode.</strong> ' +
-          'Start with <code>OPEN-ME.command</code> or <code>OPEN-ME.bat</code> so data saves to Dropbox as <code>data.json</code>. ' +
-          'Opening index.html directly only uses temporary browser storage.';
-      }
-    }
-
-    // ---------- Persistence ----------
-    async function loadState() {
-      const api = await probeFileStorage();
-      if (api && api.ok) {
-        fileStorageActive = true;
-        const fileData = api.data && Object.keys(api.data).length ? api.data : null;
-        if (fileData && applyLoadedData(fileData)) {
-          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot())); } catch (_) {}
-          updateLastSaved();
-          updateStorageHelp();
+    async function linkSyncFile() {
+      try {
+        if (!window.showSaveFilePicker && !window.showOpenFilePicker) {
+          toast('File linking needs Chrome or Edge. Use Export/Import instead.', 'error');
           return;
         }
-        if (loadFromLocalStorage()) {
-          await saveState();
-          toast('Migrated browser data into Dropbox data.json');
-          updateStorageHelp();
-          return;
-        }
-        updateLastSaved();
-        updateStorageHelp();
-        return;
-      }
-
-      fileStorageActive = false;
-      loadFromLocalStorage();
-      updateLastSaved();
-      updateStorageHelp();
-    }
-
-    async function saveState() {
-      const toSave = snapshot();
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave)); } catch (_) {}
-
-      if (fileStorageActive) {
-        try {
-          const res = await fetch(FILE_API, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(toSave)
+        const useExisting = confirm(
+          'OK = Open existing invoiceflow-data.json\n' +
+          'Cancel = Create a new sync file\n\n' +
+          'Put it inside Dropbox, iCloud Drive, OneDrive, or Google Drive.'
+        );
+        let handle;
+        if (useExisting) {
+          const [h] = await window.showOpenFilePicker({
+            types: [{ description: 'InvoiceFlow Data', accept: { 'application/json': ['.json'] } }],
+            multiple: false
           });
-          const body = await res.json().catch(() => ({}));
-          if (!res.ok || body.ok === false) throw new Error(body.error || 'Save failed');
-          updateLastSaved(true);
-          return;
-        } catch (e) {
-          console.error(e);
-          toast('Failed to save to Dropbox file — check OPEN-ME is running', 'error');
-          updateLastSaved(false);
-          return;
+          handle = h;
+        } else {
+          handle = await window.showSaveFilePicker({
+            suggestedName: 'invoiceflow-data.json',
+            types: [{ description: 'InvoiceFlow Data', accept: { 'application/json': ['.json'] } }]
+          });
+          // Write current data immediately
+          const writable = await handle.createWritable();
+          await writable.write(JSON.stringify(serializeState(), null, 2));
+          await writable.close();
         }
+        const ok = await ensureSyncPermission(handle, 'readwrite');
+        if (!ok) { toast('Permission denied', 'error'); return; }
+        syncFileHandle = handle;
+        await idbSet('syncFile', handle);
+        // If opened existing, load it
+        if (useExisting) await pullFromSyncFile({ quiet: false });
+        else toast('Sync file created & linked');
+        updateSyncStatusUI();
+      } catch (e) {
+        if (e && e.name === 'AbortError') return;
+        console.error(e);
+        toast('Could not link file: ' + (e.message || e), 'error');
       }
-      updateLastSaved(false);
     }
 
-    function updateLastSaved(toFile) {
-      const el = document.getElementById('last-saved');
-      if (!el) return;
-      const t = new Date().toLocaleTimeString();
-      if (fileStorageActive && toFile !== false) {
-        el.textContent = 'Saved to Dropbox · ' + t;
-      } else if (fileStorageActive) {
-        el.textContent = 'Save error · ' + t;
-      } else {
-        el.textContent = 'Browser only · ' + t;
+    async function pushToSyncFile(opts) {
+      const quiet = opts && opts.quiet;
+      try {
+        if (!syncFileHandle) {
+          if (!quiet) toast('No sync file linked', 'error');
+          return;
+        }
+        const ok = await ensureSyncPermission(syncFileHandle, 'readwrite');
+        if (!ok) { if (!quiet) toast('Sync file permission needed — click Link again', 'error'); return; }
+        const writable = await syncFileHandle.createWritable();
+        await writable.write(JSON.stringify(serializeState(), null, 2));
+        await writable.close();
+        if (!quiet) toast('Saved to sync file');
+        updateSyncStatusUI();
+      } catch (e) {
+        console.error(e);
+        if (!quiet) toast('Sync save failed: ' + (e.message || e), 'error');
       }
+    }
+
+    async function pullFromSyncFile(opts) {
+      const quiet = opts && opts.quiet;
+      try {
+        if (!syncFileHandle) {
+          // Fallback: file picker one-shot import
+          if (quiet) return;
+          if (!window.showOpenFilePicker) {
+            toast('Use Import JSON Backup instead', 'error');
+            return;
+          }
+          const [h] = await window.showOpenFilePicker({
+            types: [{ description: 'InvoiceFlow Data', accept: { 'application/json': ['.json'] } }],
+            multiple: false
+          });
+          const ok = await ensureSyncPermission(h, 'read');
+          if (!ok) return;
+          const file = await h.getFile();
+          const text = await file.text();
+          const data = JSON.parse(text);
+          if (!confirm('Replace local data with this file?')) return;
+          applyData(data);
+          navigate('dashboard');
+          return;
+        }
+        const ok = await ensureSyncPermission(syncFileHandle, 'read');
+        if (!ok) { if (!quiet) toast('Permission needed', 'error'); return; }
+        const file = await syncFileHandle.getFile();
+        const text = await file.text();
+        if (!text || !text.trim()) {
+          if (!quiet) toast('Sync file is empty — saving current data into it');
+          await pushToSyncFile({ quiet });
+          return;
+        }
+        const data = JSON.parse(text);
+        if (opts && opts.preferFileIfNewer) {
+          const fileUpdated = data.updatedAt ? Date.parse(data.updatedAt) : 0;
+          const localRaw = localStorage.getItem(STORAGE_KEY);
+          let localUpdated = 0;
+          try { localUpdated = localRaw ? Date.parse(JSON.parse(localRaw).updatedAt || 0) : 0; } catch (_) {}
+          // If local has more invoices and is newer, keep local and push
+          const fileCount = (data.invoices || []).length;
+          const localCount = state.invoices.length;
+          if (localCount > 0 && localUpdated > fileUpdated && localCount >= fileCount) {
+            await pushToSyncFile({ quiet: true });
+            return;
+          }
+          if (fileCount === 0 && localCount > 0) {
+            await pushToSyncFile({ quiet: true });
+            return;
+          }
+        } else if (!quiet) {
+          if (!confirm('Load sync file and replace data on this computer?')) return;
+        }
+        applyData(data, { silent: quiet });
+        if (!quiet) navigate('dashboard');
+      } catch (e) {
+        if (e && e.name === 'AbortError') return;
+        console.error(e);
+        if (!quiet) toast('Load failed: ' + (e.message || e), 'error');
+      }
+    }
+
+    async function unlinkSyncFile() {
+      syncFileHandle = null;
+      try { await idbDel('syncFile'); } catch (_) {}
+      updateSyncStatusUI();
+      toast('Sync file unlinked (local data kept)');
     }
 
     // ---------- Utils ----------
@@ -1051,7 +1221,7 @@
             if (page === 'invoices') renderInvoices();
       if (page === 'create') initCreateForm();
       if (page === 'clients') renderClients();
-      if (page === 'settings') loadSettingsForm();
+      if (page === 'settings') { loadSettingsForm(); updateSyncStatusUI(); }
     }
     document.querySelectorAll('.nav-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1210,7 +1380,7 @@
       if (el) {
         el.innerHTML = recent.length
           ? renderInvoiceTable(recent)
-          : '<div class="empty"><p>No invoices yet — click New Invoice to start</p></div>';
+          : '<div class="empty"><p>No invoices yet — click New Invoice, or open Settings to import / link a sync file</p></div>';
       }
     }
 
@@ -1894,20 +2064,13 @@
 
     // ---------- Import / Export ----------
     function exportData() {
-      const blob = new Blob([JSON.stringify({
-        business: state.business,
-        clients: state.clients,
-        invoices: state.invoices,
-        timeEntries: state.timeEntries,
-        nextInvNum: state.nextInvNum,
-        exportedAt: new Date().toISOString()
-      }, null, 2)], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify(serializeState(), null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'invoiceflow-backup-' + today() + '.json';
+      a.download = 'invoiceflow-data.json';
       a.click();
       URL.revokeObjectURL(a.href);
-      toast('Data exported');
+      toast('Backup downloaded — save it in Dropbox/iCloud for other PCs');
     }
     function importData(e) {
       const file = e.target.files?.[0];
@@ -1916,22 +2079,37 @@
       reader.onload = () => {
         try {
           const data = JSON.parse(reader.result);
-          if (!confirm(`Import data? This replaces current data.`)) return;
-          state.business = { ...state.business, ...(data.business || {}) };
-          state.clients = data.clients || [];
-          state.invoices = data.invoices || [];
-          state.timeEntries = data.timeEntries || [];
-          state.nextInvNum = data.nextInvNum || 1;
-          state.selectedTimeIds = new Set();
-          saveState();
+          const nInv = (data.invoices || []).length;
+          const nCli = (data.clients || []).length;
+          if (!confirm('Import backup?\n\n' + nInv + ' invoices, ' + nCli + ' clients\n\nThis replaces data on THIS browser.')) return;
+          applyData(data);
           navigate('dashboard');
-          toast('Data imported');
         } catch (err) {
-          toast('Import failed', 'error');
+          toast('Import failed — not valid JSON', 'error');
         }
       };
       reader.readAsText(file);
       e.target.value = '';
+    }
+    async function copyDataToClipboard() {
+      try {
+        await navigator.clipboard.writeText(JSON.stringify(serializeState(), null, 2));
+        toast('Data copied — paste on the other computer via Settings');
+      } catch (e) {
+        toast('Clipboard copy failed', 'error');
+      }
+    }
+    async function pasteDataFromClipboard() {
+      try {
+        const text = await navigator.clipboard.readText();
+        const data = JSON.parse(text);
+        const nInv = (data.invoices || []).length;
+        if (!confirm('Paste clipboard data?\n\n' + nInv + ' invoices found. Replaces local data.')) return;
+        applyData(data);
+        navigate('dashboard');
+      } catch (e) {
+        toast('Paste failed — copy a backup JSON first', 'error');
+      }
     }
     function clearAllData() {
       state.invoices = [];
@@ -1941,17 +2119,14 @@
       state.selectedTimeIds = new Set();
       saveState();
       navigate('dashboard');
-      toast('All data cleared');
+      toast('Local data cleared');
     }
 
-    // Boot — prefer Dropbox data.json when OPEN-ME server is running
-    (async function boot() {
-      await loadState();
-      navigate('dashboard');
-      if (!fileStorageActive) {
-        console.warn('InvoiceFlow: file storage offline. Launch OPEN-ME so data saves to Dropbox.');
-      }
-    })();
+    // Boot
+    loadState();
+    navigate('dashboard');
+    // Restore cloud sync file handle (Chrome/Edge) after a tick
+    setTimeout(() => { restoreSyncHandle(); }, 100);
   </script>
 </body>
 </html>
