@@ -31,23 +31,48 @@ A single-file web app — no install, no account, no server. Just open it in you
 
 ## Quick Start
 
-### Option 1 — Just open it
-1. Download or clone this repo
-2. Open `index.html` in **Chrome** or **Firefox**  
-   (Safari: use File → Open File…)
-3. Go to **Settings** and enter your business name + default rates
-4. Start logging time or creating invoices
+### Recommended — Dropbox multi-device (Windows / Mac / Linux)
 
-### Option 2 — Local server (recommended)
-```bash
-# Python
-python3 -m http.server 8765
+Keep the app in a synced folder (e.g. Dropbox) with this layout:
 
-# Then open http://127.0.0.1:8765
+```text
+InvoiceFlow/
+  Run InvoiceFlow PC.bat
+  Run InvoiceFlow Mac.command
+  Run InvoiceFlow Linux.sh
+  app/
+    index.html
+    server.py
+    server.ps1
+    invoiceflow-data.json   ← shared data (auto-created)
 ```
 
-### Option 3 — Mac double-click
-Double-click `OPEN-ME.command` (macOS) — it starts a local server and prints the URL.
+| OS | Start with | Needs |
+|----|------------|--------|
+| **Windows** | `Run InvoiceFlow PC.bat` | PowerShell (built-in) |
+| **Mac** | `Run InvoiceFlow Mac.command` | Python 3 |
+| **Linux** | `Run InvoiceFlow Linux.sh` | Python 3 + `chmod +x` once |
+
+Then open **http://127.0.0.1:8765/index.html** (launchers open this for you).  
+Settings → Multi-Device Sync should show **Linked (Dropbox app folder)**.
+
+**Linux one-time:**
+```bash
+chmod +x "Run InvoiceFlow Linux.sh"
+./Run\ InvoiceFlow\ Linux.sh
+```
+
+Use **one computer at a time**; wait for cloud sync before switching.
+
+### Option — open `index.html` alone
+Works for a quick look, but multi-device Dropbox sync needs the launcher/server above.
+
+### Dev server
+```bash
+cd app   # or repo root if flat
+python3 server.py
+# http://127.0.0.1:8765/index.html
+```
 
 ## Screenshots
 

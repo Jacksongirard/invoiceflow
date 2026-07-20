@@ -1,25 +1,62 @@
-InvoiceFlow — how to open
+InvoiceFlow — how to open (Windows / Mac / Linux)
 
+DATA
+  Shared invoices/clients live in:
+    InvoiceFlow/app/invoiceflow-data.json
+  Dropbox (or another cloud sync client) keeps that file in sync.
+
+  Use only ONE computer at a time for editing.
+  Wait for cloud sync to finish before switching machines.
+
+------------------------------------------------------------------------
+WINDOWS (primary PC)
+  1. Open Dropbox → InvoiceFlow
+  2. Double-click:  Run InvoiceFlow PC
+  3. Leave the black window open
+  4. Browser opens http://127.0.0.1:8765/index.html
+  Uses built-in PowerShell (no Python required).
+
+------------------------------------------------------------------------
 MAC
-1. Open Dropbox → InvoiceFlow
-2. Double-click OPEN-ME.command
-   (first time: right-click → Open)
-3. Use the app at http://127.0.0.1:8765
-4. Leave the Terminal window open while working
+  1. Open Dropbox → InvoiceFlow
+  2. Double-click:  Run InvoiceFlow Mac
+     (first time: right-click → Open if macOS blocks it)
+  3. Leave the Terminal window open
+  Needs Python 3 (preinstalled on modern macOS).
 
-WINDOWS
-1. Install Python 3 if needed: https://www.python.org/downloads/
-   - Check "Add python.exe to PATH" during install
-2. Wait for Dropbox to finish syncing the InvoiceFlow folder
-3. Open Dropbox → InvoiceFlow
-4. Double-click OPEN-ME.bat
-5. Use the app at http://127.0.0.1:8765
-6. Leave the black Command window open while working
+------------------------------------------------------------------------
+LINUX
+  Requirements:
+    - Dropbox (or sync client) with this folder fully downloaded
+    - Python 3  (python3 --version)
+        Debian/Ubuntu:  sudo apt install -y python3
+        Fedora:         sudo dnf install -y python3
+        Arch:           sudo pacman -S python
 
-IMPORTANT
-- Always start with OPEN-ME (not by opening index.html alone)
-- Data lives in data.json and syncs via Dropbox
-- Only use the app on ONE computer at a time so Dropbox does not create conflicted copies
-- Wait for Dropbox to finish syncing before switching machines
+  Option A — launcher script
+    1. Open the InvoiceFlow folder in your file manager
+    2. Make the script executable (once):
+         chmod +x "Run InvoiceFlow Linux.sh"
+    3. Run it:
+         - Terminal:  ./Run\ InvoiceFlow\ Linux.sh
+         - Or right-click → Run as Program / Run in Terminal
+    4. Leave the terminal open while working
 
-If the browser does not open, visit: http://127.0.0.1:8765
+  Option B — manual
+    cd /path/to/InvoiceFlow/app
+    python3 server.py
+    Then open:  http://127.0.0.1:8765/index.html
+
+------------------------------------------------------------------------
+SETTINGS / SYNC STATUS
+  With Run InvoiceFlow open, Settings → Multi-Device Sync should show
+  something like:  Linked (Dropbox app folder)
+
+  Do NOT open index.html by double-click alone for daily use
+  (that skips the server and can break multi-device sync).
+
+------------------------------------------------------------------------
+TROUBLESHOOTING
+  Port in use: close other InvoiceFlow windows; wait 10s; retry.
+  Missing files: wait for Dropbox green checks / make folder offline.
+  Linux browser did not open: manually visit http://127.0.0.1:8765/index.html
