@@ -624,15 +624,18 @@
               <div style="font-size:12px;color:var(--text-muted);margin-top:4px" id="sync-status-detail"></div>
             </div>
             <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
-              <button class="btn btn-primary" onclick="linkSyncFile()">Link / Create Sync File</button>
+              <button class="btn btn-primary" onclick="linkExistingSyncFile()">Link Existing Sync File</button>
+              <button class="btn btn-primary" onclick="createSyncFile()">Create New Sync File</button>
               <button class="btn btn-secondary" onclick="pullFromSyncFile()">Load from Sync File</button>
               <button class="btn btn-secondary" onclick="pushToSyncFile()">Save to Sync File Now</button>
               <button class="btn btn-secondary" onclick="unlinkSyncFile()">Unlink</button>
             </div>
             <p style="font-size:12px;color:var(--text-muted);margin-bottom:20px;line-height:1.45">
-              <strong>Setup (once per computer):</strong> Put the file in a cloud-synced folder → click <em>Link / Create Sync File</em> →
-              choose that file (or save a new <code>invoiceflow-data.json</code> into the folder). Use Chrome or Edge for best results (file link is remembered).
-              On Safari, use Export on one Mac and Import on the other, or place the file in iCloud and Import it.
+              <strong>Setup (once per computer):</strong> Prefer <strong>Chrome or Edge</strong>.
+              Put <code>invoiceflow-data.json</code> in Dropbox (or create one with <em>Create New Sync File</em> and save it into Dropbox).
+              Then on each computer click <em>Link Existing Sync File</em> and pick that same file.
+              Click the button once — the file window must open immediately from that click (browsers block it after pop-ups).
+              On Safari, use Export / Import instead.
             </p>
             <h3 style="margin-top:8px">Manual Backup</h3>
             <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px">
@@ -960,47 +963,64 @@
       }
     }
 
-    async function linkSyncFile() {
+    // NOTE: File pickers must be the first await after a click.
+    // confirm()/alert() or any prior await burns the "user gesture" and Chrome throws:
+    // "must be handling a user gesture to show a file picker"
+    async function finalizeLinkedSyncFile(handle, opts) {
+      const created = opts && opts.created;
+      const ok = await ensureSyncPermission(handle, 'readwrite');
+      if (!ok) { toast('Permission denied', 'error'); return; }
+      syncFileHandle = handle;
+      await idbSet('syncFile', handle);
+      if (created) toast('Sync file created & linked');
+      else await pullFromSyncFile({ quiet: false });
+      updateSyncStatusUI();
+    }
+
+    async function linkExistingSyncFile() {
       try {
-        if (!window.showSaveFilePicker && !window.showOpenFilePicker) {
+        if (!window.showOpenFilePicker) {
           toast('File linking needs Chrome or Edge. Use Export/Import instead.', 'error');
           return;
         }
-        const useExisting = confirm(
-          'OK = Open existing invoiceflow-data.json\n' +
-          'Cancel = Create a new sync file\n\n' +
-          'Put it inside Dropbox, iCloud Drive, OneDrive, or Google Drive.'
-        );
-        let handle;
-        if (useExisting) {
-          const [h] = await window.showOpenFilePicker({
-            types: [{ description: 'InvoiceFlow Data', accept: { 'application/json': ['.json'] } }],
-            multiple: false
-          });
-          handle = h;
-        } else {
-          handle = await window.showSaveFilePicker({
-            suggestedName: 'invoiceflow-data.json',
-            types: [{ description: 'InvoiceFlow Data', accept: { 'application/json': ['.json'] } }]
-          });
-          // Write current data immediately
-          const writable = await handle.createWritable();
-          await writable.write(JSON.stringify(serializeState(), null, 2));
-          await writable.close();
-        }
-        const ok = await ensureSyncPermission(handle, 'readwrite');
-        if (!ok) { toast('Permission denied', 'error'); return; }
-        syncFileHandle = handle;
-        await idbSet('syncFile', handle);
-        // If opened existing, load it
-        if (useExisting) await pullFromSyncFile({ quiet: false });
-        else toast('Sync file created & linked');
-        updateSyncStatusUI();
+        // First await = picker (keeps user gesture)
+        const [handle] = await window.showOpenFilePicker({
+          types: [{ description: 'InvoiceFlow Data', accept: { 'application/json': ['.json'] } }],
+          multiple: false
+        });
+        await finalizeLinkedSyncFile(handle, { created: false });
       } catch (e) {
         if (e && e.name === 'AbortError') return;
         console.error(e);
         toast('Could not link file: ' + (e.message || e), 'error');
       }
+    }
+
+    async function createSyncFile() {
+      try {
+        if (!window.showSaveFilePicker) {
+          toast('File linking needs Chrome or Edge. Use Export/Import instead.', 'error');
+          return;
+        }
+        // First await = picker (keeps user gesture)
+        const handle = await window.showSaveFilePicker({
+          suggestedName: 'invoiceflow-data.json',
+          types: [{ description: 'InvoiceFlow Data', accept: { 'application/json': ['.json'] } }]
+        });
+        const writable = await handle.createWritable();
+        await writable.write(JSON.stringify(serializeState(), null, 2));
+        await writable.close();
+        await finalizeLinkedSyncFile(handle, { created: true });
+      } catch (e) {
+        if (e && e.name === 'AbortError') return;
+        console.error(e);
+        toast('Could not create file: ' + (e.message || e), 'error');
+      }
+    }
+
+    // Back-compat if anything still calls the old name
+    async function linkSyncFile() {
+      return linkExistingSyncFile();
     }
 
     async function pushToSyncFile(opts) {
