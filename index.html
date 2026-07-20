@@ -1,0 +1,1834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>InvoiceFlow - Creator & Tracker</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --surface2: #243044;
+      --border: #2d3a4f;
+      --text: #e8eef7;
+      --text-muted: #8b9cb3;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --accent: #8b5cf6;
+      --radius: 12px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.4);
+      --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .app {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: 100vh;
+    }
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px 24px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .logo-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border-radius: 10px;
+      display: grid; place-items: center;
+      font-weight: 700; font-size: 18px; color: white;
+    }
+    .logo h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo span { font-size: 11px; color: var(--text-muted); display: block; }
+    .nav-btn {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px; border-radius: 10px;
+      background: transparent; border: none;
+      color: var(--text-muted); font-size: 14px; font-weight: 500;
+      cursor: pointer; transition: all 0.15s; text-align: left; width: 100%;
+      font-family: var(--font);
+    }
+    .nav-btn:hover { background: var(--surface2); color: var(--text); }
+    .nav-btn.active { background: rgba(59,130,246,0.15); color: var(--primary); }
+    .nav-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
+    .sidebar-footer {
+      margin-top: auto; padding-top: 16px;
+      border-top: 1px solid var(--border);
+      font-size: 12px; color: var(--text-muted); text-align: center;
+    }
+    .main { padding: 32px 40px; overflow-y: auto; max-height: 100vh; }
+    .page-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 28px; flex-wrap: wrap; gap: 16px;
+    }
+    .page-header h2 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+    .page-header p { color: var(--text-muted); font-size: 14px; margin-top: 4px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 18px; border-radius: 10px;
+      font-size: 14px; font-weight: 600; border: none;
+      cursor: pointer; transition: all 0.15s; font-family: var(--font);
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: var(--border); }
+    .btn-success { background: var(--success); color: white; }
+    .btn-success:hover { filter: brightness(1.1); }
+    .btn-danger { background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
+    .btn-danger:hover { background: rgba(239,68,68,0.25); }
+    .btn-sm { padding: 6px 12px; font-size: 13px; }
+    .btn-icon { padding: 8px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow);
+    }
+    .stats {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px; margin-bottom: 28px;
+    }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px; position: relative; overflow: hidden;
+    }
+    .stat-card::before { content: ''; position: absolute; top:0; left:0; right:0; height: 3px; }
+    .stat-card.blue::before { background: var(--primary); }
+    .stat-card.green::before { background: var(--success); }
+    .stat-card.orange::before { background: var(--warning); }
+    .stat-card.purple::before { background: var(--accent); }
+    .stat-card.teal::before { background: #14b8a6; }
+    .stat-label { font-size: 13px; color: var(--text-muted); font-weight: 500; margin-bottom: 8px; }
+    .stat-value { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; }
+    .stat-sub { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    .form-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1 / -1; }
+    label { font-size: 13px; font-weight: 500; color: var(--text-muted); }
+    input, select, textarea {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 14px; color: var(--text); font-size: 14px; font-family: var(--font);
+      transition: border-color 0.15s; width: 100%;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.2);
+    }
+    textarea { resize: vertical; min-height: 80px; }
+    .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    .items-table th {
+      text-align: left; font-size: 12px; font-weight: 600; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .items-table td { padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .items-table input { padding: 8px 10px; font-size: 13px; }
+    .amount-cell { font-family: var(--mono); font-weight: 500; font-variant-numeric: tabular-nums; }
+    .totals { display: flex; justify-content: flex-end; margin-top: 16px; }
+    .totals-box { width: 280px; display: flex; flex-direction: column; gap: 10px; }
+    .total-row { display: flex; justify-content: space-between; font-size: 14px; }
+    .total-row.grand {
+      font-size: 18px; font-weight: 700; padding-top: 12px;
+      border-top: 2px solid var(--border); margin-top: 4px;
+    }
+    .total-row .value { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    .filters { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+    .search-box { position: relative; flex: 1; min-width: 200px; }
+    .search-box input { padding-left: 40px; }
+    .search-box svg {
+      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+      color: var(--text-muted); width: 18px; height: 18px;
+    }
+    .invoice-table { width: 100%; border-collapse: collapse; }
+    .invoice-table th {
+      text-align: left; font-size: 12px; font-weight: 600; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.4px; padding: 12px 16px;
+      border-bottom: 1px solid var(--border); background: var(--surface); position: sticky; top: 0;
+    }
+    .invoice-table td { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 14px; }
+    .invoice-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .invoice-table .mono { font-family: var(--mono); font-size: 13px; }
+    .badge {
+      display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 20px;
+      font-size: 12px; font-weight: 600; text-transform: capitalize;
+    }
+    .badge-draft { background: rgba(139,156,179,0.2); color: var(--text-muted); }
+    .badge-sent { background: rgba(59,130,246,0.2); color: #60a5fa; }
+    .badge-paid { background: rgba(16,185,129,0.2); color: #34d399; }
+    .badge-overdue { background: rgba(239,68,68,0.2); color: #f87171; }
+    .badge-partial { background: rgba(245,158,11,0.2); color: #fbbf24; }
+    .badge-unbilled { background: rgba(139,92,246,0.2); color: #a78bfa; }
+    .badge-billed { background: rgba(16,185,129,0.15); color: #34d399; }
+    .badge-labor { background: rgba(59,130,246,0.2); color: #60a5fa; }
+    .badge-travel { background: rgba(245,158,11,0.2); color: #fbbf24; }
+    .badge-materials { background: rgba(16,185,129,0.2); color: #34d399; }
+    .badge-other { background: rgba(139,156,179,0.2); color: var(--text-muted); }
+    .row-actions { display: flex; gap: 6px; opacity: 0.75; flex-wrap: wrap; }
+    tr:hover .row-actions { opacity: 1; }
+    .empty { text-align: center; padding: 48px 20px; color: var(--text-muted); }
+    .empty h3 { font-size: 18px; color: var(--text); margin-bottom: 8px; }
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000; padding: 20px; backdrop-filter: blur(4px);
+    }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; width: 100%; max-width: 900px; max-height: 90vh;
+      overflow-y: auto; box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+    }
+    .modal-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 20px 24px; border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; background: var(--surface); z-index: 10;
+    }
+    .modal-header h3 { font-size: 18px; font-weight: 700; }
+    .modal-body { padding: 24px; }
+    .modal-footer {
+      display: flex; justify-content: flex-end; gap: 12px;
+      padding: 16px 24px; border-top: 1px solid var(--border);
+      position: sticky; bottom: 0; background: var(--surface);
+    }
+    .settings-section { margin-bottom: 32px; }
+    .settings-section h3 {
+      font-size: 16px; margin-bottom: 16px; padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--surface2); border: 1px solid var(--border);
+      padding: 14px 20px; border-radius: 10px; box-shadow: var(--shadow);
+      z-index: 2000; animation: slideIn 0.3s ease; max-width: 360px;
+    }
+    .toast.success { border-left: 4px solid var(--success); }
+    .toast.error { border-left: 4px solid var(--danger); }
+    @keyframes slideIn {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .invoice-preview {
+      background: white; color: #1a1a1a; border-radius: 8px;
+      padding: 40px; font-size: 13px; max-width: 800px; margin: 0 auto;
+      font-family: var(--font);
+    }
+    .invoice-preview h1 { font-size: 28px; color: #1e40af; margin-bottom: 4px; }
+    .preview-header { display: flex; justify-content: space-between; margin-bottom: 32px; }
+    .preview-meta { text-align: right; }
+    .preview-meta .inv-num { font-size: 20px; font-weight: 700; color: #1e40af; }
+    .preview-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
+    .preview-parties h4 {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+      color: #64748b; margin-bottom: 8px;
+    }
+    .preview-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+    .preview-table th {
+      background: #f1f5f9; padding: 10px 12px; text-align: left;
+      font-size: 11px; text-transform: uppercase; color: #64748b;
+    }
+    .preview-table td { padding: 12px; border-bottom: 1px solid #e2e8f0; }
+    .preview-totals { display: flex; justify-content: flex-end; }
+    .preview-totals table { width: 240px; }
+    .preview-totals td { padding: 6px 0; }
+    .preview-totals .grand td {
+      font-weight: 700; font-size: 16px; border-top: 2px solid #1e40af; padding-top: 10px;
+    }
+    .hidden { display: none !important; }
+    .mobile-menu-btn {
+      display: none; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px; color: var(--text); cursor: pointer;
+    }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .quick-log-card { margin-bottom: 24px; }
+    .quick-log-card h3 { font-size: 16px; margin-bottom: 16px; }
+    .checkbox-cell { width: 40px; text-align: center; }
+    .checkbox-cell input { width: auto; cursor: pointer; }
+    .section-title {
+      font-size: 16px; font-weight: 600; margin-bottom: 16px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    @media (max-width: 1100px) {
+      .form-grid-4 { grid-template-columns: 1fr 1fr; }
+      .two-col { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 900px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar {
+        position: fixed; left: -280px; z-index: 500;
+        transition: left 0.25s; width: 260px;
+      }
+      .sidebar.open { left: 0; }
+      .main { padding: 20px 16px; }
+      .form-grid, .form-grid-3, .form-grid-4 { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: 1fr 1fr; }
+      .mobile-menu-btn { display: flex; }
+    }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    @media print {
+      body * { visibility: hidden; }
+      #print-area, #print-area * { visibility: visible; }
+      #print-area {
+        position: absolute; left: 0; top: 0; width: 100%;
+        background: white; color: #111; padding: 0; margin: 0;
+      }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="logo">
+        <div class="logo-icon">IF</div>
+        <div>
+          <h1>InvoiceFlow</h1>
+          <span>Creator & Tracker</span>
+        </div>
+      </div>
+      <button class="nav-btn active" data-page="dashboard">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        Dashboard
+      </button>
+      <button class="nav-btn" data-page="timelog">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Time & Labor
+      </button>
+      <button class="nav-btn" data-page="invoices">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Invoices
+      </button>
+      <button class="nav-btn" data-page="create">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        New Invoice
+      </button>
+      <button class="nav-btn" data-page="clients">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+        Clients
+      </button>
+      <button class="nav-btn" data-page="settings">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        Settings
+      </button>
+      <div class="sidebar-footer">
+        Data saved locally<br>
+        <span id="last-saved">—</span>
+      </div>
+    </aside>
+
+    <main class="main">
+      <button class="mobile-menu-btn" id="menu-toggle" style="margin-bottom:16px">
+        <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+
+      <!-- ==================== DASHBOARD ==================== -->
+      <div id="page-dashboard" class="page">
+        <div class="page-header">
+          <div>
+            <h2>Dashboard</h2>
+            <p>Overview + quick labor / travel entry</p>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-secondary" onclick="navigate('timelog')">Time Log</button>
+            <button class="btn btn-primary" onclick="navigate('create')">New Invoice</button>
+          </div>
+        </div>
+
+        <div class="stats" id="dashboard-stats"></div>
+
+        <!-- QUICK LABOR / TRAVEL ENTRY -->
+        <div class="card quick-log-card">
+          <h3>Quick Log — Labor, Travel & Expenses</h3>
+          <div class="form-grid-4" style="margin-bottom:12px">
+            <div class="form-group">
+              <label>Date</label>
+              <input type="date" id="ql-date" />
+            </div>
+            <div class="form-group">
+              <label>Type</label>
+              <select id="ql-type">
+                <option value="labor">Labor / Hours</option>
+                <option value="travel">Travel Time</option>
+                <option value="mileage">Mileage</option>
+                <option value="materials">Materials / Parts</option>
+                <option value="other">Other Expense</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Client</label>
+              <select id="ql-client">
+                <option value="">— Select or type below —</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Client Name</label>
+              <input type="text" id="ql-client-name" placeholder="Client or job name" />
+            </div>
+          </div>
+          <div class="form-grid-4" style="margin-bottom:12px">
+            <div class="form-group">
+              <label>Description *</label>
+              <input type="text" id="ql-desc" placeholder="e.g. Site repair, drive to job, parts" />
+            </div>
+            <div class="form-group">
+              <label id="ql-qty-label">Hours</label>
+              <input type="number" id="ql-qty" min="0" step="0.25" value="1" />
+            </div>
+            <div class="form-group">
+              <label id="ql-rate-label">Rate ($/hr)</label>
+              <input type="number" id="ql-rate" min="0" step="0.01" value="75" />
+            </div>
+            <div class="form-group">
+              <label>Amount</label>
+              <input type="text" id="ql-amount" readonly style="background:var(--surface2);font-family:var(--mono);font-weight:600" value="$0.00" />
+            </div>
+          </div>
+          <div class="form-grid" style="margin-bottom:16px">
+            <div class="form-group">
+              <label>Notes (optional)</label>
+              <input type="text" id="ql-notes" placeholder="Job #, PO, location..." />
+            </div>
+            <div class="form-group" style="display:flex;align-items:flex-end;gap:12px">
+              <button class="btn btn-primary" onclick="addTimeEntry()" style="flex:1">
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                Add Entry
+              </button>
+              <button class="btn btn-secondary" onclick="clearQuickLog()">Clear</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- UNBILLED SUMMARY + RECENT -->
+        <div class="two-col">
+          <div class="card">
+            <div class="section-title">
+              <span>Unbilled Time & Expenses</span>
+              <button class="btn btn-sm btn-success" id="btn-invoice-selected" onclick="invoiceSelectedEntries()" disabled>Create Invoice from Selected</button>
+            </div>
+            <div id="unbilled-list"></div>
+          </div>
+          <div class="card">
+            <div class="section-title">
+              <span>Recent Invoices</span>
+              <button class="btn btn-sm btn-secondary" onclick="navigate('invoices')">View All</button>
+            </div>
+            <div id="recent-invoices"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== TIME LOG PAGE ==================== -->
+      <div id="page-timelog" class="page hidden">
+        <div class="page-header">
+          <div>
+            <h2>Time & Labor Log</h2>
+            <p>Track hours, travel, mileage, and expenses</p>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-success" id="btn-invoice-selected-tl" onclick="invoiceSelectedEntries()" disabled>Invoice Selected</button>
+            <button class="btn btn-primary" onclick="navigate('dashboard')">Quick Log on Dashboard</button>
+          </div>
+        </div>
+
+        <div class="stats" id="timelog-stats"></div>
+
+        <div class="filters">
+          <div class="search-box">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="text" id="search-time" placeholder="Search description, client, notes..." oninput="renderTimeLog()" />
+          </div>
+          <select id="filter-time-type" onchange="renderTimeLog()" style="width:auto;min-width:130px">
+            <option value="all">All Types</option>
+            <option value="labor">Labor</option>
+            <option value="travel">Travel</option>
+            <option value="mileage">Mileage</option>
+            <option value="materials">Materials</option>
+            <option value="other">Other</option>
+          </select>
+          <select id="filter-time-status" onchange="renderTimeLog()" style="width:auto;min-width:130px">
+            <option value="all">All Status</option>
+            <option value="unbilled">Unbilled</option>
+            <option value="billed">Billed</option>
+          </select>
+          <select id="filter-time-client" onchange="renderTimeLog()" style="width:auto;min-width:150px">
+            <option value="all">All Clients</option>
+          </select>
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden">
+          <div id="timelog-list"></div>
+        </div>
+      </div>
+
+      <!-- ==================== INVOICES ==================== -->
+      <div id="page-invoices" class="page hidden">
+        <div class="page-header">
+          <div>
+            <h2>Invoices</h2>
+            <p>Manage and track all your invoices</p>
+          </div>
+          <button class="btn btn-primary" onclick="navigate('create')">New Invoice</button>
+        </div>
+        <div class="filters">
+          <div class="search-box">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="text" id="search-invoices" placeholder="Search by number, client, or notes..." oninput="renderInvoices()" />
+          </div>
+          <select id="filter-status" onchange="renderInvoices()" style="width:auto;min-width:140px">
+            <option value="all">All Statuses</option>
+            <option value="draft">Draft</option>
+            <option value="sent">Sent</option>
+            <option value="paid">Paid</option>
+            <option value="partial">Partial</option>
+            <option value="overdue">Overdue</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" onclick="exportData()">Export JSON</button>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <div id="invoices-list"></div>
+        </div>
+      </div>
+
+      <!-- ==================== CREATE INVOICE ==================== -->
+      <div id="page-create" class="page hidden">
+        <div class="page-header">
+          <div>
+            <h2 id="create-title">New Invoice</h2>
+            <p>Fill in the details below</p>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-secondary" onclick="navigate('invoices')">Cancel</button>
+            <button class="btn btn-secondary" onclick="saveInvoice(true)">Save Draft</button>
+            <button class="btn btn-primary" onclick="saveInvoice(false)">Save & Close</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Invoice Number</label>
+              <input type="text" id="inv-number" placeholder="INV-001" />
+            </div>
+            <div class="form-group">
+              <label>Status</label>
+              <select id="inv-status">
+                <option value="draft">Draft</option>
+                <option value="sent">Sent</option>
+                <option value="paid">Paid</option>
+                <option value="partial">Partial</option>
+                <option value="overdue">Overdue</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Issue Date</label>
+              <input type="date" id="inv-date" />
+            </div>
+            <div class="form-group">
+              <label>Due Date</label>
+              <input type="date" id="inv-due" />
+            </div>
+            <div class="form-group">
+              <label>Client</label>
+              <select id="inv-client" onchange="fillClientDetails()">
+                <option value="">— Select or type new —</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Client Name *</label>
+              <input type="text" id="inv-client-name" placeholder="Acme Corp" required />
+            </div>
+            <div class="form-group full">
+              <label>Client Address / Email</label>
+              <textarea id="inv-client-address" placeholder="123 Main St&#10;client@email.com" rows="2"></textarea>
+            </div>
+          </div>
+          <h3 style="margin:28px 0 12px;font-size:15px">Line Items</h3>
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th style="width:40%">Description</th>
+                <th style="width:12%">Qty</th>
+                <th style="width:18%">Rate</th>
+                <th style="width:18%">Amount</th>
+                <th style="width:12%"></th>
+              </tr>
+            </thead>
+            <tbody id="line-items"></tbody>
+          </table>
+          <button class="btn btn-secondary btn-sm" onclick="addLineItem()">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Add Line
+          </button>
+          <div class="totals">
+            <div class="totals-box">
+              <div class="total-row"><span>Subtotal</span><span class="value" id="subtotal">$0.00</span></div>
+              <div class="total-row" style="align-items:center;gap:12px">
+                <span>Tax %</span>
+                <input type="number" id="inv-tax" value="0" min="0" step="0.01" style="width:80px;text-align:right" oninput="recalcTotals()" />
+              </div>
+              <div class="total-row"><span>Tax Amount</span><span class="value" id="tax-amount">$0.00</span></div>
+              <div class="total-row" style="align-items:center;gap:12px">
+                <span>Discount</span>
+                <input type="number" id="inv-discount" value="0" min="0" step="0.01" style="width:80px;text-align:right" oninput="recalcTotals()" />
+              </div>
+              <div class="total-row grand"><span>Total</span><span class="value" id="grand-total">$0.00</span></div>
+              <div class="total-row" style="align-items:center;gap:12px;margin-top:8px">
+                <span>Amount Paid</span>
+                <input type="number" id="inv-paid" value="0" min="0" step="0.01" style="width:100px;text-align:right" oninput="recalcTotals()" />
+              </div>
+              <div class="total-row" style="color:var(--warning)"><span>Balance Due</span><span class="value" id="balance-due">$0.00</span></div>
+            </div>
+          </div>
+          <div class="form-group full" style="margin-top:24px">
+            <label>Notes / Payment Terms</label>
+            <textarea id="inv-notes" placeholder="Payment due within 30 days. Thank you for your business!" rows="3"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== CLIENTS ==================== -->
+      <div id="page-clients" class="page hidden">
+        <div class="page-header">
+          <div>
+            <h2>Clients</h2>
+            <p>Manage your client directory</p>
+          </div>
+          <button class="btn btn-primary" onclick="openClientModal()">Add Client</button>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <div id="clients-list"></div>
+        </div>
+      </div>
+
+      <!-- ==================== SETTINGS ==================== -->
+      <div id="page-settings" class="page hidden">
+        <div class="page-header">
+          <div>
+            <h2>Settings</h2>
+            <p>Business info + default rates for labor & travel</p>
+          </div>
+          <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+        </div>
+        <div class="card">
+          <div class="settings-section">
+            <h3>Business Details</h3>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Business Name *</label>
+                <input type="text" id="biz-name" placeholder="Your Company LLC" />
+              </div>
+              <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="biz-email" placeholder="hello@yourco.com" />
+              </div>
+              <div class="form-group">
+                <label>Phone</label>
+                <input type="text" id="biz-phone" placeholder="(555) 123-4567" />
+              </div>
+              <div class="form-group">
+                <label>Website</label>
+                <input type="text" id="biz-web" placeholder="www.yourco.com" />
+              </div>
+              <div class="form-group full">
+                <label>Address</label>
+                <textarea id="biz-address" rows="3" placeholder="123 Business Ave&#10;Suite 100&#10;City, ST 12345"></textarea>
+              </div>
+              <div class="form-group">
+                <label>Tax ID / EIN</label>
+                <input type="text" id="biz-taxid" placeholder="XX-XXXXXXX" />
+              </div>
+              <div class="form-group">
+                <label>Default Tax Rate %</label>
+                <input type="number" id="biz-taxrate" value="0" min="0" step="0.01" />
+              </div>
+              <div class="form-group">
+                <label>Currency Symbol</label>
+                <input type="text" id="biz-currency" value="$" maxlength="3" />
+              </div>
+              <div class="form-group">
+                <label>Invoice Prefix</label>
+                <input type="text" id="biz-prefix" value="INV-" />
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3>Default Rates (used in Quick Log)</h3>
+            <div class="form-grid-4">
+              <div class="form-group">
+                <label>Labor Rate ($/hr)</label>
+                <input type="number" id="biz-labor-rate" value="75" min="0" step="0.01" />
+              </div>
+              <div class="form-group">
+                <label>Travel Rate ($/hr)</label>
+                <input type="number" id="biz-travel-rate" value="50" min="0" step="0.01" />
+              </div>
+              <div class="form-group">
+                <label>Mileage Rate ($/mi)</label>
+                <input type="number" id="biz-mileage-rate" value="0.70" min="0" step="0.01" />
+              </div>
+              <div class="form-group">
+                <label>Default Hours Step</label>
+                <input type="number" id="biz-hour-step" value="0.25" min="0.05" step="0.05" />
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3>Default Payment Terms</h3>
+            <div class="form-group">
+              <textarea id="biz-terms" rows="3" placeholder="Payment is due within 30 days of invoice date."></textarea>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3>Data Management</h3>
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+              <button class="btn btn-secondary" onclick="exportData()">Export All Data (JSON)</button>
+              <label class="btn btn-secondary" style="cursor:pointer">
+                Import Data
+                <input type="file" accept=".json" onchange="importData(event)" style="display:none" />
+              </label>
+              <button class="btn btn-danger" onclick="if(confirm('Delete ALL data? This cannot be undone.')) clearAllData()">Clear All Data</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Client Modal -->
+  <div id="client-modal" class="modal-overlay hidden">
+    <div class="modal" style="max-width:500px">
+      <div class="modal-header">
+        <h3 id="client-modal-title">Add Client</h3>
+        <button class="btn btn-icon btn-secondary" onclick="closeClientModal()">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group" style="margin-bottom:16px">
+          <label>Name *</label>
+          <input type="text" id="client-name" />
+        </div>
+        <div class="form-group" style="margin-bottom:16px">
+          <label>Email</label>
+          <input type="email" id="client-email" />
+        </div>
+        <div class="form-group" style="margin-bottom:16px">
+          <label>Phone</label>
+          <input type="text" id="client-phone" />
+        </div>
+        <div class="form-group">
+          <label>Address</label>
+          <textarea id="client-address" rows="3"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeClientModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveClient()">Save Client</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Time Entry Modal -->
+  <div id="time-modal" class="modal-overlay hidden">
+    <div class="modal" style="max-width:560px">
+      <div class="modal-header">
+        <h3>Edit Time Entry</h3>
+        <button class="btn btn-icon btn-secondary" onclick="closeTimeModal()">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid" style="margin-bottom:12px">
+          <div class="form-group">
+            <label>Date</label>
+            <input type="date" id="te-date" />
+          </div>
+          <div class="form-group">
+            <label>Type</label>
+            <select id="te-type">
+              <option value="labor">Labor / Hours</option>
+              <option value="travel">Travel Time</option>
+              <option value="mileage">Mileage</option>
+              <option value="materials">Materials / Parts</option>
+              <option value="other">Other Expense</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Client Name</label>
+            <input type="text" id="te-client" />
+          </div>
+          <div class="form-group">
+            <label>Description</label>
+            <input type="text" id="te-desc" />
+          </div>
+          <div class="form-group">
+            <label id="te-qty-label">Hours / Qty</label>
+            <input type="number" id="te-qty" min="0" step="0.01" />
+          </div>
+          <div class="form-group">
+            <label id="te-rate-label">Rate</label>
+            <input type="number" id="te-rate" min="0" step="0.01" />
+          </div>
+          <div class="form-group full">
+            <label>Notes</label>
+            <input type="text" id="te-notes" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeTimeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveTimeEntryEdit()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preview Modal -->
+  <div id="preview-modal" class="modal-overlay hidden">
+    <div class="modal" style="max-width:860px">
+      <div class="modal-header no-print">
+        <h3>Invoice Preview</h3>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-success" onclick="printInvoice()">Print / Save PDF</button>
+          <button class="btn btn-icon btn-secondary" onclick="closePreview()">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="modal-body" style="background:#e2e8f0;padding:24px">
+        <div id="preview-content" class="invoice-preview"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="print-area" class="hidden"></div>
+
+  <script>
+    const STORAGE_KEY = 'invoiceflow_data_v2';
+    let state = {
+      business: {
+        name: '', email: '', phone: '', website: '', address: '',
+        taxId: '', taxRate: 0, currency: '$', prefix: 'INV-',
+        terms: 'Payment is due within 30 days of invoice date. Thank you for your business!',
+        laborRate: 75,
+        travelRate: 50,
+        mileageRate: 0.70,
+        hourStep: 0.25
+      },
+      clients: [],
+      invoices: [],
+      timeEntries: [],
+      nextInvNum: 1,
+      editingId: null,
+      editingClientId: null,
+      editingTimeId: null,
+      selectedTimeIds: new Set()
+    };
+
+    // ---------- Persistence ----------
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('invoiceflow_data_v1');
+        if (raw) {
+          const data = JSON.parse(raw);
+          state = { ...state, ...data };
+          if (!state.timeEntries) state.timeEntries = [];
+          if (!state.business.laborRate) state.business.laborRate = 75;
+          if (!state.business.travelRate) state.business.travelRate = 50;
+          if (!state.business.mileageRate) state.business.mileageRate = 0.70;
+          state.selectedTimeIds = new Set();
+        }
+      } catch (e) { console.error(e); }
+      updateLastSaved();
+    }
+    function saveState() {
+      try {
+        const toSave = {
+          business: state.business,
+          clients: state.clients,
+          invoices: state.invoices,
+          timeEntries: state.timeEntries,
+          nextInvNum: state.nextInvNum
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+        updateLastSaved();
+      } catch (e) { toast('Failed to save', 'error'); }
+    }
+    function updateLastSaved() {
+      const el = document.getElementById('last-saved');
+      if (el) el.textContent = 'Saved ' + new Date().toLocaleTimeString();
+    }
+
+    // ---------- Utils ----------
+    function $(id) { return document.getElementById(id); }
+    function money(n) {
+      const c = state.business.currency || '$';
+      return c + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function today() { return new Date().toISOString().slice(0, 10); }
+    function addDays(dateStr, days) {
+      const d = new Date(dateStr); d.setDate(d.getDate() + days);
+      return d.toISOString().slice(0, 10);
+    }
+    function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+    function toast(msg, type = 'success') {
+      const t = document.createElement('div');
+      t.className = 'toast ' + type;
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 3000);
+    }
+    function esc(s) {
+      if (!s) return '';
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function typeLabel(t) {
+      return { labor:'Labor', travel:'Travel', mileage:'Mileage', materials:'Materials', other:'Other' }[t] || t;
+    }
+
+    // ---------- Navigation ----------
+    function navigate(page) {
+      document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      const el = $('page-' + page);
+      if (el) el.classList.remove('hidden');
+      const btn = document.querySelector('.nav-btn[data-page="' + page + '"]');
+      if (btn) btn.classList.add('active');
+      $('sidebar').classList.remove('open');
+      if (page === 'dashboard') renderDashboard();
+      if (page === 'timelog') renderTimeLog();
+      if (page === 'invoices') renderInvoices();
+      if (page === 'create') initCreateForm();
+      if (page === 'clients') renderClients();
+      if (page === 'settings') loadSettingsForm();
+    }
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => navigate(btn.dataset.page));
+    });
+    $('menu-toggle')?.addEventListener('click', () => $('sidebar').classList.toggle('open'));
+
+    // ---------- Quick Log helpers ----------
+    function setupQuickLog() {
+      $('ql-date').value = today();
+      $('ql-rate').value = state.business.laborRate || 75;
+      $('ql-qty').value = 1;
+      $('ql-type').value = 'labor';
+      updateQuickLogLabels();
+      populateQlClientSelect();
+      recalcQuickAmount();
+      $('ql-type').onchange = updateQuickLogLabels;
+      $('ql-qty').oninput = recalcQuickAmount;
+      $('ql-rate').oninput = recalcQuickAmount;
+      $('ql-client').onchange = () => {
+        const id = $('ql-client').value;
+        if (id) {
+          const c = state.clients.find(x => x.id === id);
+          if (c) $('ql-client-name').value = c.name;
+        }
+      };
+    }
+    function updateQuickLogLabels() {
+      const t = $('ql-type').value;
+      const qtyL = $('ql-qty-label');
+      const rateL = $('ql-rate-label');
+      if (t === 'labor') {
+        qtyL.textContent = 'Hours'; rateL.textContent = 'Rate ($/hr)';
+        $('ql-rate').value = state.business.laborRate || 75;
+      } else if (t === 'travel') {
+        qtyL.textContent = 'Hours'; rateL.textContent = 'Rate ($/hr)';
+        $('ql-rate').value = state.business.travelRate || 50;
+      } else if (t === 'mileage') {
+        qtyL.textContent = 'Miles'; rateL.textContent = 'Rate ($/mi)';
+        $('ql-rate').value = state.business.mileageRate || 0.70;
+      } else {
+        qtyL.textContent = 'Qty'; rateL.textContent = 'Unit Cost ($)';
+        $('ql-rate').value = 0;
+      }
+      recalcQuickAmount();
+    }
+    function recalcQuickAmount() {
+      const qty = Number($('ql-qty').value) || 0;
+      const rate = Number($('ql-rate').value) || 0;
+      $('ql-amount').value = money(qty * rate);
+    }
+    function populateQlClientSelect() {
+      const sel = $('ql-client');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">— Select or type below —</option>' +
+        state.clients.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    }
+    function clearQuickLog() {
+      $('ql-desc').value = '';
+      $('ql-notes').value = '';
+      $('ql-client-name').value = '';
+      $('ql-client').value = '';
+      $('ql-qty').value = 1;
+      updateQuickLogLabels();
+    }
+
+    function addTimeEntry() {
+      const desc = $('ql-desc').value.trim();
+      if (!desc) return toast('Description required', 'error');
+      const qty = Number($('ql-qty').value) || 0;
+      const rate = Number($('ql-rate').value) || 0;
+      if (qty <= 0) return toast('Quantity/hours must be > 0', 'error');
+
+      let clientName = $('ql-client-name').value.trim();
+      const clientId = $('ql-client').value;
+      if (!clientName && clientId) {
+        const c = state.clients.find(x => x.id === clientId);
+        if (c) clientName = c.name;
+      }
+
+      const entry = {
+        id: uid(),
+        date: $('ql-date').value || today(),
+        type: $('ql-type').value,
+        clientName: clientName || '',
+        desc,
+        qty,
+        rate,
+        amount: qty * rate,
+        notes: $('ql-notes').value.trim(),
+        billed: false,
+        invoiceId: null,
+        createdAt: new Date().toISOString()
+      };
+      state.timeEntries.unshift(entry);
+
+      // auto-add client if new name
+      if (clientName && !state.clients.some(c => c.name === clientName)) {
+        state.clients.push({ id: uid(), name: clientName, email: '', phone: '', address: '' });
+      }
+
+      saveState();
+      toast('Entry added');
+      clearQuickLog();
+      $('ql-desc').focus();
+      renderDashboard();
+    }
+
+    // ---------- Time Log rendering ----------
+    function calcEntryAmount(e) { return (Number(e.qty)||0) * (Number(e.rate)||0); }
+
+    function renderDashboard() {
+      setupQuickLog();
+
+      // Invoice stats
+      const invs = state.invoices;
+      let totalRevenue = 0, outstanding = 0, overdue = 0, paidCount = 0;
+      invs.forEach(inv => {
+        const total = calcInvoiceTotal(inv);
+        const paid = Number(inv.amountPaid || 0);
+        totalRevenue += paid;
+        const bal = total - paid;
+        if (bal > 0.01 && inv.status !== 'draft') {
+          outstanding += bal;
+          if (inv.dueDate && inv.dueDate < today() && inv.status !== 'paid') overdue += bal;
+        }
+        if (getStatus(inv) === 'paid') paidCount++;
+      });
+
+      // Time stats
+      const unbilled = state.timeEntries.filter(e => !e.billed);
+      const unbilledAmt = unbilled.reduce((s,e) => s + calcEntryAmount(e), 0);
+      const unbilledHrs = unbilled.filter(e => e.type === 'labor' || e.type === 'travel')
+        .reduce((s,e) => s + (Number(e.qty)||0), 0);
+
+      $('dashboard-stats').innerHTML = `
+        <div class="stat-card blue">
+          <div class="stat-label">Total Invoiced</div>
+          <div class="stat-value">${money(invs.reduce((s,i)=>s+calcInvoiceTotal(i),0))}</div>
+          <div class="stat-sub">${invs.length} invoice${invs.length!==1?'s':''}</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">Collected</div>
+          <div class="stat-value">${money(totalRevenue)}</div>
+          <div class="stat-sub">${paidCount} paid</div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-label">Outstanding</div>
+          <div class="stat-value">${money(outstanding)}</div>
+          <div class="stat-sub">Awaiting payment</div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-label">Unbilled Labor</div>
+          <div class="stat-value">${money(unbilledAmt)}</div>
+          <div class="stat-sub">${unbilledHrs.toFixed(1)} hrs · ${unbilled.length} entries</div>
+        </div>`;
+
+      // Unbilled list (selectable)
+      renderUnbilledList();
+
+      // Recent invoices
+      const recent = [...invs].sort((a,b) => (b.date||'').localeCompare(a.date||'')).slice(0, 5);
+      $('recent-invoices').innerHTML = recent.length
+        ? renderInvoiceTable(recent, true)
+        : '<div class="empty"><p>No invoices yet</p></div>';
+    }
+
+    function renderUnbilledList() {
+      const list = state.timeEntries.filter(e => !e.billed)
+        .sort((a,b) => (b.date||'').localeCompare(a.date||''));
+      if (!list.length) {
+        $('unbilled-list').innerHTML = '<div class="empty" style="padding:24px"><p>No unbilled entries. Use the Quick Log above.</p></div>';
+        updateInvoiceSelectedBtn();
+        return;
+      }
+      $('unbilled-list').innerHTML = `
+        <div style="max-height:320px;overflow-y:auto">
+          <table class="invoice-table">
+            <thead><tr>
+              <th class="checkbox-cell"><input type="checkbox" id="select-all-unbilled" onchange="toggleSelectAllUnbilled(this.checked)" title="Select all"></th>
+              <th>Date</th><th>Type</th><th>Client</th><th>Description</th><th>Qty</th><th>Amount</th>
+            </tr></thead>
+            <tbody>
+              ${list.map(e => `
+                <tr>
+                  <td class="checkbox-cell"><input type="checkbox" class="time-check" data-id="${e.id}" ${state.selectedTimeIds.has(e.id)?'checked':''} onchange="toggleTimeSelect('${e.id}', this.checked)"></td>
+                  <td class="mono">${e.date||'—'}</td>
+                  <td><span class="badge badge-${e.type}">${typeLabel(e.type)}</span></td>
+                  <td>${esc(e.clientName||'—')}</td>
+                  <td>${esc(e.desc)}</td>
+                  <td class="mono">${e.qty} ${e.type==='mileage'?'mi':(e.type==='labor'||e.type==='travel'?'hr':'')}</td>
+                  <td class="mono">${money(calcEntryAmount(e))}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
+      updateInvoiceSelectedBtn();
+    }
+
+    function toggleTimeSelect(id, checked) {
+      if (checked) state.selectedTimeIds.add(id);
+      else state.selectedTimeIds.delete(id);
+      updateInvoiceSelectedBtn();
+    }
+    function toggleSelectAllUnbilled(checked) {
+      const list = state.timeEntries.filter(e => !e.billed);
+      list.forEach(e => {
+        if (checked) state.selectedTimeIds.add(e.id);
+        else state.selectedTimeIds.delete(e.id);
+      });
+      renderUnbilledList();
+    }
+    function updateInvoiceSelectedBtn() {
+      const n = state.selectedTimeIds.size;
+      const btns = [$('btn-invoice-selected'), $('btn-invoice-selected-tl')];
+      btns.forEach(btn => {
+        if (!btn) return;
+        btn.disabled = n === 0;
+        btn.textContent = n > 0 ? `Create Invoice (${n} selected)` : 'Create Invoice from Selected';
+      });
+    }
+
+    function invoiceSelectedEntries() {
+      const ids = [...state.selectedTimeIds];
+      if (!ids.length) return toast('Select at least one entry', 'error');
+      const entries = state.timeEntries.filter(e => ids.includes(e.id) && !e.billed);
+      if (!entries.length) return toast('No unbilled entries selected', 'error');
+
+      // Group by client — if multiple clients, warn
+      const clients = [...new Set(entries.map(e => e.clientName || '').filter(Boolean))];
+      if (clients.length > 1) {
+        if (!confirm(`Selected entries belong to ${clients.length} different clients (${clients.join(', ')}). Create one invoice for the first client and leave others?`)) return;
+      }
+      const primaryClient = clients[0] || entries[0].clientName || '';
+
+      // Build invoice
+      state.editingId = null;
+      navigate('create');
+      // After navigate, form is reset — now fill it
+      setTimeout(() => {
+        $('inv-client-name').value = primaryClient;
+        const match = state.clients.find(c => c.name === primaryClient);
+        if (match) {
+          $('inv-client').value = match.id;
+          $('inv-client-address').value = [match.email, match.phone, match.address].filter(Boolean).join('\n');
+        }
+        $('line-items').innerHTML = '';
+        entries.forEach(e => {
+          const unit = e.type === 'mileage' ? 'mi' : (e.type === 'labor' || e.type === 'travel' ? 'hr' : '');
+          const desc = `${typeLabel(e.type)}: ${e.desc}${e.date ? ' ('+e.date+')' : ''}${unit ? ' ['+e.qty+' '+unit+']' : ''}`;
+          addLineItem({ desc, qty: e.qty, rate: e.rate });
+        });
+        // Store which entries to mark billed on save
+        window._pendingBillEntries = entries.map(e => e.id);
+        toast(`${entries.length} entries loaded into invoice`);
+        state.selectedTimeIds.clear();
+      }, 50);
+    }
+
+    // ---------- Full Time Log page ----------
+    function renderTimeLog() {
+      // Stats
+      const all = state.timeEntries;
+      const unbilled = all.filter(e => !e.billed);
+      const billed = all.filter(e => e.billed);
+      const laborHrs = all.filter(e => e.type === 'labor').reduce((s,e) => s + (Number(e.qty)||0), 0);
+      const travelHrs = all.filter(e => e.type === 'travel').reduce((s,e) => s + (Number(e.qty)||0), 0);
+      const miles = all.filter(e => e.type === 'mileage').reduce((s,e) => s + (Number(e.qty)||0), 0);
+      const unbilledAmt = unbilled.reduce((s,e) => s + calcEntryAmount(e), 0);
+
+      $('timelog-stats').innerHTML = `
+        <div class="stat-card purple">
+          <div class="stat-label">Unbilled</div>
+          <div class="stat-value">${money(unbilledAmt)}</div>
+          <div class="stat-sub">${unbilled.length} entries</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-label">Labor Hours</div>
+          <div class="stat-value">${laborHrs.toFixed(1)}</div>
+          <div class="stat-sub">all time</div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-label">Travel Hours</div>
+          <div class="stat-value">${travelHrs.toFixed(1)}</div>
+          <div class="stat-sub">all time</div>
+        </div>
+        <div class="stat-card teal">
+          <div class="stat-label">Mileage</div>
+          <div class="stat-value">${miles.toFixed(0)}</div>
+          <div class="stat-sub">miles</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">Billed Entries</div>
+          <div class="stat-value">${billed.length}</div>
+          <div class="stat-sub">${money(billed.reduce((s,e)=>s+calcEntryAmount(e),0))}</div>
+        </div>`;
+
+      // Client filter options
+      const clientNames = [...new Set(all.map(e => e.clientName).filter(Boolean))].sort();
+      const sel = $('filter-time-client');
+      const cur = sel.value;
+      sel.innerHTML = '<option value="all">All Clients</option>' +
+        clientNames.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+      sel.value = cur || 'all';
+
+      // Filter list
+      let list = [...all];
+      const q = ($('search-time')?.value || '').toLowerCase().trim();
+      const typeF = $('filter-time-type')?.value || 'all';
+      const statusF = $('filter-time-status')?.value || 'all';
+      const clientF = $('filter-time-client')?.value || 'all';
+      if (q) list = list.filter(e =>
+        (e.desc||'').toLowerCase().includes(q) ||
+        (e.clientName||'').toLowerCase().includes(q) ||
+        (e.notes||'').toLowerCase().includes(q)
+      );
+      if (typeF !== 'all') list = list.filter(e => e.type === typeF);
+      if (statusF === 'unbilled') list = list.filter(e => !e.billed);
+      if (statusF === 'billed') list = list.filter(e => e.billed);
+      if (clientF !== 'all') list = list.filter(e => e.clientName === clientF);
+      list.sort((a,b) => (b.date||'').localeCompare(a.date||''));
+
+      if (!list.length) {
+        $('timelog-list').innerHTML = '<div class="empty"><h3>No entries found</h3><p>Log time from the Dashboard</p></div>';
+        return;
+      }
+
+      $('timelog-list').innerHTML = `
+        <table class="invoice-table">
+          <thead><tr>
+            <th class="checkbox-cell"></th>
+            <th>Date</th><th>Type</th><th>Client</th><th>Description</th>
+            <th>Qty</th><th>Rate</th><th>Amount</th><th>Status</th><th style="width:130px">Actions</th>
+          </tr></thead>
+          <tbody>
+            ${list.map(e => `
+              <tr>
+                <td class="checkbox-cell">
+                  ${!e.billed ? `<input type="checkbox" class="time-check" data-id="${e.id}" ${state.selectedTimeIds.has(e.id)?'checked':''} onchange="toggleTimeSelect('${e.id}', this.checked)">` : ''}
+                </td>
+                <td class="mono">${e.date||'—'}</td>
+                <td><span class="badge badge-${e.type}">${typeLabel(e.type)}</span></td>
+                <td>${esc(e.clientName||'—')}</td>
+                <td>${esc(e.desc)}${e.notes ? '<br><span style="font-size:12px;color:var(--text-muted)">'+esc(e.notes)+'</span>' : ''}</td>
+                <td class="mono">${e.qty}</td>
+                <td class="mono">${money(e.rate)}</td>
+                <td class="mono">${money(calcEntryAmount(e))}</td>
+                <td><span class="badge badge-${e.billed?'billed':'unbilled'}">${e.billed?'Billed':'Unbilled'}</span></td>
+                <td>
+                  <div class="row-actions">
+                    ${!e.billed ? `<button class="btn btn-sm btn-secondary" onclick="editTimeEntry('${e.id}')">Edit</button>` : ''}
+                    <button class="btn btn-sm btn-danger" onclick="deleteTimeEntry('${e.id}')">✕</button>
+                  </div>
+                </td>
+              </tr>`).join('')}
+          </tbody>
+        </table>`;
+      updateInvoiceSelectedBtn();
+    }
+
+    function editTimeEntry(id) {
+      const e = state.timeEntries.find(x => x.id === id);
+      if (!e || e.billed) return;
+      state.editingTimeId = id;
+      $('te-date').value = e.date || today();
+      $('te-type').value = e.type;
+      $('te-client').value = e.clientName || '';
+      $('te-desc').value = e.desc || '';
+      $('te-qty').value = e.qty;
+      $('te-rate').value = e.rate;
+      $('te-notes').value = e.notes || '';
+      $('time-modal').classList.remove('hidden');
+    }
+    function closeTimeModal() {
+      $('time-modal').classList.add('hidden');
+      state.editingTimeId = null;
+    }
+    function saveTimeEntryEdit() {
+      const e = state.timeEntries.find(x => x.id === state.editingTimeId);
+      if (!e) return;
+      e.date = $('te-date').value;
+      e.type = $('te-type').value;
+      e.clientName = $('te-client').value.trim();
+      e.desc = $('te-desc').value.trim();
+      e.qty = Number($('te-qty').value) || 0;
+      e.rate = Number($('te-rate').value) || 0;
+      e.amount = e.qty * e.rate;
+      e.notes = $('te-notes').value.trim();
+      saveState();
+      closeTimeModal();
+      renderTimeLog();
+      toast('Entry updated');
+    }
+    function deleteTimeEntry(id) {
+      if (!confirm('Delete this time entry?')) return;
+      state.timeEntries = state.timeEntries.filter(e => e.id !== id);
+      state.selectedTimeIds.delete(id);
+      saveState();
+      if ($('page-timelog') && !$('page-timelog').classList.contains('hidden')) renderTimeLog();
+      else renderDashboard();
+      toast('Entry deleted');
+    }
+
+    // ---------- Invoices (same as before, plus mark billed) ----------
+    function calcInvoiceTotal(inv) {
+      const sub = (inv.items || []).reduce((s, it) => s + (Number(it.qty)||0) * (Number(it.rate)||0), 0);
+      const tax = sub * (Number(inv.taxRate)||0) / 100;
+      const disc = Number(inv.discount)||0;
+      return Math.max(0, sub + tax - disc);
+    }
+    function getStatus(inv) {
+      if (inv.status === 'paid' || inv.status === 'draft' || inv.status === 'partial') return inv.status;
+      const total = calcInvoiceTotal(inv);
+      const paid = Number(inv.amountPaid||0);
+      if (paid >= total - 0.01) return 'paid';
+      if (paid > 0) return 'partial';
+      if (inv.dueDate && inv.dueDate < today() && (inv.status === 'sent' || inv.status === 'overdue')) return 'overdue';
+      return inv.status || 'draft';
+    }
+
+    function renderInvoiceTable(list, compact) {
+      if (!list.length) {
+        return `<div class="empty"><h3>No invoices found</h3><p>Create your first invoice</p></div>`;
+      }
+      return `<table class="invoice-table">
+        <thead><tr>
+          <th>Number</th><th>Client</th><th>Date</th><th>Due</th><th>Amount</th><th>Status</th><th style="width:150px">Actions</th>
+        </tr></thead>
+        <tbody>
+          ${list.map(inv => {
+            const st = getStatus(inv);
+            return `<tr>
+              <td class="mono">${esc(inv.number)}</td>
+              <td>${esc(inv.clientName || '—')}</td>
+              <td>${inv.date || '—'}</td>
+              <td>${inv.dueDate || '—'}</td>
+              <td class="mono">${money(calcInvoiceTotal(inv))}</td>
+              <td><span class="badge badge-${st}">${st}</span></td>
+              <td><div class="row-actions">
+                <button class="btn btn-sm btn-secondary" onclick="previewInvoice('${inv.id}')">PDF</button>
+                <button class="btn btn-sm btn-secondary" onclick="editInvoice('${inv.id}')">Edit</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteInvoice('${inv.id}')">✕</button>
+              </div></td>
+            </tr>`;
+          }).join('')}
+        </tbody></table>`;
+    }
+
+    function renderInvoices() {
+      let list = [...state.invoices];
+      const q = ($('search-invoices')?.value || '').toLowerCase().trim();
+      const st = $('filter-status')?.value || 'all';
+      if (q) list = list.filter(i =>
+        (i.number||'').toLowerCase().includes(q) ||
+        (i.clientName||'').toLowerCase().includes(q) ||
+        (i.notes||'').toLowerCase().includes(q)
+      );
+      if (st !== 'all') list = list.filter(i => getStatus(i) === st);
+      list.sort((a,b) => (b.date||'').localeCompare(a.date||''));
+      $('invoices-list').innerHTML = renderInvoiceTable(list);
+    }
+
+    function deleteInvoice(id) {
+      if (!confirm('Delete this invoice?')) return;
+      // Un-bill any time entries linked to it
+      state.timeEntries.forEach(e => {
+        if (e.invoiceId === id) { e.billed = false; e.invoiceId = null; }
+      });
+      state.invoices = state.invoices.filter(i => i.id !== id);
+      saveState();
+      renderInvoices();
+      toast('Invoice deleted');
+    }
+
+    // ---------- Create / Edit Invoice ----------
+    function initCreateForm() {
+      if (!window._pendingBillEntries) {
+        state.editingId = null;
+        $('create-title').textContent = 'New Invoice';
+        $('inv-number').value = (state.business.prefix || 'INV-') + String(state.nextInvNum).padStart(3, '0');
+        $('inv-status').value = 'draft';
+        $('inv-date').value = today();
+        $('inv-due').value = addDays(today(), 30);
+        $('inv-client').value = '';
+        $('inv-client-name').value = '';
+        $('inv-client-address').value = '';
+        $('inv-tax').value = state.business.taxRate || 0;
+        $('inv-discount').value = 0;
+        $('inv-paid').value = 0;
+        $('inv-notes').value = state.business.terms || '';
+        $('line-items').innerHTML = '';
+        addLineItem();
+      }
+      // pending entries already filled by invoiceSelectedEntries
+      populateClientSelect();
+      recalcTotals();
+    }
+
+    function editInvoice(id) {
+      const inv = state.invoices.find(i => i.id === id);
+      if (!inv) return;
+      window._pendingBillEntries = null;
+      state.editingId = id;
+      navigate('create');
+      $('create-title').textContent = 'Edit Invoice ' + inv.number;
+      $('inv-number').value = inv.number;
+      $('inv-status').value = inv.status || 'draft';
+      $('inv-date').value = inv.date || today();
+      $('inv-due').value = inv.dueDate || '';
+      $('inv-client-name').value = inv.clientName || '';
+      $('inv-client-address').value = inv.clientAddress || '';
+      $('inv-tax').value = inv.taxRate || 0;
+      $('inv-discount').value = inv.discount || 0;
+      $('inv-paid').value = inv.amountPaid || 0;
+      $('inv-notes').value = inv.notes || '';
+      $('line-items').innerHTML = '';
+      (inv.items || []).forEach(it => addLineItem(it));
+      if (!(inv.items || []).length) addLineItem();
+      populateClientSelect();
+      const match = state.clients.find(c => c.name === inv.clientName);
+      if (match) $('inv-client').value = match.id;
+      recalcTotals();
+    }
+
+    function populateClientSelect() {
+      const sel = $('inv-client');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">— Select client —</option>' +
+        state.clients.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    }
+    function fillClientDetails() {
+      const id = $('inv-client').value;
+      if (!id) return;
+      const c = state.clients.find(x => x.id === id);
+      if (c) {
+        $('inv-client-name').value = c.name;
+        $('inv-client-address').value = [c.email, c.phone, c.address].filter(Boolean).join('\n');
+      }
+    }
+
+    function addLineItem(item = null) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input type="text" class="item-desc" placeholder="Service or product" value="${esc(item?.desc || '')}" oninput="recalcTotals()" /></td>
+        <td><input type="number" class="item-qty" min="0" step="0.01" value="${item?.qty ?? 1}" oninput="recalcTotals()" /></td>
+        <td><input type="number" class="item-rate" min="0" step="0.01" value="${item?.rate ?? 0}" oninput="recalcTotals()" /></td>
+        <td class="amount-cell item-amount">$0.00</td>
+        <td style="text-align:center">
+          <button class="btn btn-sm btn-danger" onclick="this.closest('tr').remove();recalcTotals()">✕</button>
+        </td>`;
+      $('line-items').appendChild(tr);
+      recalcTotals();
+    }
+
+    function recalcTotals() {
+      let sub = 0;
+      document.querySelectorAll('#line-items tr').forEach(tr => {
+        const qty = Number(tr.querySelector('.item-qty')?.value) || 0;
+        const rate = Number(tr.querySelector('.item-rate')?.value) || 0;
+        const amt = qty * rate;
+        sub += amt;
+        const cell = tr.querySelector('.item-amount');
+        if (cell) cell.textContent = money(amt);
+      });
+      const taxRate = Number($('inv-tax').value) || 0;
+      const taxAmt = sub * taxRate / 100;
+      const disc = Number($('inv-discount').value) || 0;
+      const total = Math.max(0, sub + taxAmt - disc);
+      const paid = Number($('inv-paid').value) || 0;
+      const bal = Math.max(0, total - paid);
+      $('subtotal').textContent = money(sub);
+      $('tax-amount').textContent = money(taxAmt);
+      $('grand-total').textContent = money(total);
+      $('balance-due').textContent = money(bal);
+    }
+
+    function collectItems() {
+      const items = [];
+      document.querySelectorAll('#line-items tr').forEach(tr => {
+        const desc = tr.querySelector('.item-desc')?.value?.trim();
+        const qty = Number(tr.querySelector('.item-qty')?.value) || 0;
+        const rate = Number(tr.querySelector('.item-rate')?.value) || 0;
+        if (desc || qty || rate) items.push({ desc: desc || '', qty, rate });
+      });
+      return items;
+    }
+
+    function saveInvoice(keepOpen) {
+      const number = $('inv-number').value.trim();
+      const clientName = $('inv-client-name').value.trim();
+      if (!number) return toast('Invoice number required', 'error');
+      if (!clientName) return toast('Client name required', 'error');
+      const items = collectItems();
+      if (!items.length) return toast('Add at least one line item', 'error');
+
+      const inv = {
+        id: state.editingId || uid(),
+        number,
+        status: $('inv-status').value,
+        date: $('inv-date').value,
+        dueDate: $('inv-due').value,
+        clientName,
+        clientAddress: $('inv-client-address').value.trim(),
+        items,
+        taxRate: Number($('inv-tax').value) || 0,
+        discount: Number($('inv-discount').value) || 0,
+        amountPaid: Number($('inv-paid').value) || 0,
+        notes: $('inv-notes').value.trim(),
+        updatedAt: new Date().toISOString()
+      };
+
+      if (state.editingId) {
+        const idx = state.invoices.findIndex(i => i.id === state.editingId);
+        if (idx >= 0) state.invoices[idx] = inv;
+      } else {
+        state.invoices.push(inv);
+        const numPart = parseInt(number.replace(/\D/g, ''), 10);
+        if (!isNaN(numPart) && numPart >= state.nextInvNum) state.nextInvNum = numPart + 1;
+      }
+
+      // Mark pending time entries as billed
+      if (window._pendingBillEntries && window._pendingBillEntries.length) {
+        window._pendingBillEntries.forEach(tid => {
+          const e = state.timeEntries.find(x => x.id === tid);
+          if (e) { e.billed = true; e.invoiceId = inv.id; }
+        });
+        window._pendingBillEntries = null;
+      }
+
+      if (clientName && !state.clients.some(c => c.name === clientName)) {
+        state.clients.push({
+          id: uid(), name: clientName, email: '', phone: '',
+          address: $('inv-client-address').value.trim()
+        });
+      }
+
+      saveState();
+      toast(state.editingId ? 'Invoice updated' : 'Invoice created');
+      if (!keepOpen) {
+        state.editingId = null;
+        navigate('invoices');
+      } else {
+        state.editingId = inv.id;
+        $('create-title').textContent = 'Edit Invoice ' + inv.number;
+      }
+    }
+
+    // ---------- Clients ----------
+    function renderClients() {
+      if (!state.clients.length) {
+        $('clients-list').innerHTML = `<div class="empty"><h3>No clients yet</h3><p>Add clients for faster invoicing</p></div>`;
+        return;
+      }
+      $('clients-list').innerHTML = `<table class="invoice-table">
+        <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Address</th><th style="width:120px">Actions</th></tr></thead>
+        <tbody>
+          ${state.clients.map(c => `<tr>
+            <td><strong>${esc(c.name)}</strong></td>
+            <td>${esc(c.email || '—')}</td>
+            <td>${esc(c.phone || '—')}</td>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.address || '—')}</td>
+            <td><div class="row-actions">
+              <button class="btn btn-sm btn-secondary" onclick="editClient('${c.id}')">Edit</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteClient('${c.id}')">✕</button>
+            </div></td>
+          </tr>`).join('')}
+        </tbody></table>`;
+    }
+    function openClientModal(id = null) {
+      state.editingClientId = id;
+      $('client-modal-title').textContent = id ? 'Edit Client' : 'Add Client';
+      if (id) {
+        const c = state.clients.find(x => x.id === id);
+        $('client-name').value = c?.name || '';
+        $('client-email').value = c?.email || '';
+        $('client-phone').value = c?.phone || '';
+        $('client-address').value = c?.address || '';
+      } else {
+        $('client-name').value = ''; $('client-email').value = '';
+        $('client-phone').value = ''; $('client-address').value = '';
+      }
+      $('client-modal').classList.remove('hidden');
+    }
+    function closeClientModal() {
+      $('client-modal').classList.add('hidden');
+      state.editingClientId = null;
+    }
+    function editClient(id) { openClientModal(id); }
+    function saveClient() {
+      const name = $('client-name').value.trim();
+      if (!name) return toast('Name required', 'error');
+      const data = {
+        id: state.editingClientId || uid(),
+        name,
+        email: $('client-email').value.trim(),
+        phone: $('client-phone').value.trim(),
+        address: $('client-address').value.trim()
+      };
+      if (state.editingClientId) {
+        const idx = state.clients.findIndex(c => c.id === state.editingClientId);
+        if (idx >= 0) state.clients[idx] = data;
+      } else state.clients.push(data);
+      saveState();
+      closeClientModal();
+      renderClients();
+      toast('Client saved');
+    }
+    function deleteClient(id) {
+      if (!confirm('Delete this client?')) return;
+      state.clients = state.clients.filter(c => c.id !== id);
+      saveState();
+      renderClients();
+      toast('Client deleted');
+    }
+
+    // ---------- Settings ----------
+    function loadSettingsForm() {
+      const b = state.business;
+      $('biz-name').value = b.name || '';
+      $('biz-email').value = b.email || '';
+      $('biz-phone').value = b.phone || '';
+      $('biz-web').value = b.website || '';
+      $('biz-address').value = b.address || '';
+      $('biz-taxid').value = b.taxId || '';
+      $('biz-taxrate').value = b.taxRate || 0;
+      $('biz-currency').value = b.currency || '$';
+      $('biz-prefix').value = b.prefix || 'INV-';
+      $('biz-terms').value = b.terms || '';
+      $('biz-labor-rate').value = b.laborRate ?? 75;
+      $('biz-travel-rate').value = b.travelRate ?? 50;
+      $('biz-mileage-rate').value = b.mileageRate ?? 0.70;
+      $('biz-hour-step').value = b.hourStep ?? 0.25;
+    }
+    function saveSettings() {
+      state.business = {
+        name: $('biz-name').value.trim(),
+        email: $('biz-email').value.trim(),
+        phone: $('biz-phone').value.trim(),
+        website: $('biz-web').value.trim(),
+        address: $('biz-address').value.trim(),
+        taxId: $('biz-taxid').value.trim(),
+        taxRate: Number($('biz-taxrate').value) || 0,
+        currency: $('biz-currency').value.trim() || '$',
+        prefix: $('biz-prefix').value.trim() || 'INV-',
+        terms: $('biz-terms').value.trim(),
+        laborRate: Number($('biz-labor-rate').value) || 75,
+        travelRate: Number($('biz-travel-rate').value) || 50,
+        mileageRate: Number($('biz-mileage-rate').value) || 0.70,
+        hourStep: Number($('biz-hour-step').value) || 0.25
+      };
+      saveState();
+      toast('Settings saved');
+    }
+
+    // ---------- Preview / PDF ----------
+    function buildPreviewHTML(inv) {
+      const b = state.business;
+      const total = calcInvoiceTotal(inv);
+      const sub = (inv.items||[]).reduce((s,it)=>s+(Number(it.qty)||0)*(Number(it.rate)||0),0);
+      const taxAmt = sub * (Number(inv.taxRate)||0)/100;
+      const paid = Number(inv.amountPaid)||0;
+      const bal = Math.max(0, total - paid);
+      const st = getStatus(inv);
+      return `
+        <div class="preview-header">
+          <div>
+            <h1>${esc(b.name || 'Your Business')}</h1>
+            <div style="color:#64748b;white-space:pre-line;margin-top:8px;font-size:12px">${esc(b.address || '')}</div>
+            <div style="color:#64748b;font-size:12px;margin-top:4px">
+              ${[b.email, b.phone, b.website].filter(Boolean).map(esc).join(' · ')}
+            </div>
+            ${b.taxId ? `<div style="font-size:11px;color:#94a3b8;margin-top:4px">Tax ID: ${esc(b.taxId)}</div>` : ''}
+          </div>
+          <div class="preview-meta">
+            <div class="inv-num">${esc(inv.number)}</div>
+            <div style="margin-top:8px"><span class="badge badge-${st}" style="font-size:11px">${st.toUpperCase()}</span></div>
+            <div style="margin-top:12px;font-size:12px;color:#64748b">
+              <div><strong>Issue:</strong> ${inv.date || '—'}</div>
+              <div><strong>Due:</strong> ${inv.dueDate || '—'}</div>
+            </div>
+          </div>
+        </div>
+        <div class="preview-parties">
+          <div>
+            <h4>Bill To</h4>
+            <strong style="font-size:15px">${esc(inv.clientName)}</strong>
+            <div style="white-space:pre-line;color:#475569;margin-top:4px">${esc(inv.clientAddress || '')}</div>
+          </div>
+        </div>
+        <table class="preview-table">
+          <thead><tr>
+            <th>Description</th>
+            <th style="text-align:right">Qty</th>
+            <th style="text-align:right">Rate</th>
+            <th style="text-align:right">Amount</th>
+          </tr></thead>
+          <tbody>
+            ${(inv.items||[]).map(it => `
+              <tr>
+                <td>${esc(it.desc)}</td>
+                <td style="text-align:right">${it.qty}</td>
+                <td style="text-align:right">${money(it.rate)}</td>
+                <td style="text-align:right">${money((it.qty||0)*(it.rate||0))}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+        <div class="preview-totals">
+          <table>
+            <tr><td>Subtotal</td><td style="text-align:right">${money(sub)}</td></tr>
+            ${inv.taxRate ? `<tr><td>Tax (${inv.taxRate}%)</td><td style="text-align:right">${money(taxAmt)}</td></tr>` : ''}
+            ${inv.discount ? `<tr><td>Discount</td><td style="text-align:right">-${money(inv.discount)}</td></tr>` : ''}
+            <tr class="grand"><td>Total</td><td style="text-align:right">${money(total)}</td></tr>
+            ${paid > 0 ? `<tr><td>Amount Paid</td><td style="text-align:right">${money(paid)}</td></tr>
+            <tr><td><strong>Balance Due</strong></td><td style="text-align:right"><strong>${money(bal)}</strong></td></tr>` : ''}
+          </table>
+        </div>
+        ${inv.notes ? `<div style="margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0">
+          <h4 style="font-size:11px;text-transform:uppercase;color:#64748b;margin-bottom:6px">Notes & Terms</h4>
+          <div style="white-space:pre-line;color:#475569;font-size:12px">${esc(inv.notes)}</div>
+        </div>` : ''}`;
+    }
+    function previewInvoice(id) {
+      const inv = state.invoices.find(i => i.id === id);
+      if (!inv) return;
+      window._previewInv = inv;
+      $('preview-content').innerHTML = buildPreviewHTML(inv);
+      $('preview-modal').classList.remove('hidden');
+    }
+    function closePreview() {
+      $('preview-modal').classList.add('hidden');
+      window._previewInv = null;
+    }
+    function printInvoice() {
+      const inv = window._previewInv;
+      if (!inv) return;
+      const html = buildPreviewHTML(inv);
+      const printEl = $('print-area');
+      printEl.innerHTML = `<div class="invoice-preview" style="max-width:none;padding:40px;margin:0">${html}</div>`;
+      printEl.classList.remove('hidden');
+      setTimeout(() => {
+        window.print();
+        printEl.classList.add('hidden');
+        printEl.innerHTML = '';
+      }, 100);
+    }
+
+    // ---------- Import / Export ----------
+    function exportData() {
+      const blob = new Blob([JSON.stringify({
+        business: state.business,
+        clients: state.clients,
+        invoices: state.invoices,
+        timeEntries: state.timeEntries,
+        nextInvNum: state.nextInvNum,
+        exportedAt: new Date().toISOString()
+      }, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'invoiceflow-backup-' + today() + '.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast('Data exported');
+    }
+    function importData(e) {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          if (!confirm(`Import data? This replaces current data.`)) return;
+          state.business = { ...state.business, ...(data.business || {}) };
+          state.clients = data.clients || [];
+          state.invoices = data.invoices || [];
+          state.timeEntries = data.timeEntries || [];
+          state.nextInvNum = data.nextInvNum || 1;
+          state.selectedTimeIds = new Set();
+          saveState();
+          navigate('dashboard');
+          toast('Data imported');
+        } catch (err) {
+          toast('Import failed', 'error');
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    }
+    function clearAllData() {
+      state.invoices = [];
+      state.clients = [];
+      state.timeEntries = [];
+      state.nextInvNum = 1;
+      state.selectedTimeIds = new Set();
+      saveState();
+      navigate('dashboard');
+      toast('All data cleared');
+    }
+
+    // Boot
+    loadState();
+    navigate('dashboard');
+  </script>
+</body>
+</html>
