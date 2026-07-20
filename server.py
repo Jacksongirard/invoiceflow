@@ -13,8 +13,30 @@ from urllib.parse import urlparse, unquote
 HOST = "127.0.0.1"
 PORT = 8765
 ROOT = Path(__file__).resolve().parent
-DATA_FILE = ROOT / "data.json"
+# Prefer multi-device sync file name (shared with PC file-picker flow)
+SYNC_FILE = ROOT / "invoiceflow-data.json"
+LEGACY_DATA_FILE = ROOT / "data.json"
 INDEX_FILE = ROOT / "index.html"
+
+
+def resolve_data_file() -> Path:
+    """Use invoiceflow-data.json when present (or always prefer it for new writes)."""
+    if SYNC_FILE.exists():
+        return SYNC_FILE
+    if LEGACY_DATA_FILE.exists() and not SYNC_FILE.exists():
+        # Migrate legacy data.json → invoiceflow-data.json once
+        try:
+            raw = LEGACY_DATA_FILE.read_text(encoding="utf-8-sig").strip()
+            if raw and raw != "{}":
+                SYNC_FILE.write_text(LEGACY_DATA_FILE.read_text(encoding="utf-8-sig"), encoding="utf-8")
+                return SYNC_FILE
+        except Exception:
+            pass
+        return LEGACY_DATA_FILE
+    return SYNC_FILE
+
+
+DATA_FILE = resolve_data_file()
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -144,9 +166,12 @@ def main():
     print()
     print("  InvoiceFlow server")
     print("  ==================")
+    global DATA_FILE
+    DATA_FILE = resolve_data_file()
+
     print(f"  Folder: {ROOT}")
     print(f"  index.html present: {INDEX_FILE.exists()}")
-    print(f"  data.json: {DATA_FILE}")
+    print(f"  Sync file: {DATA_FILE}")
     print()
 
     if not INDEX_FILE.exists():

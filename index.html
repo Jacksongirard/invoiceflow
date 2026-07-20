@@ -816,6 +816,9 @@
 
     // ---------- Persistence + Multi-device sync ----------
     let syncFileHandle = null;
+    // When running via Run InvoiceFlow (local server), sync through Dropbox file
+    // without Chrome's file-picker API (needed for Safari / Mac).
+    let serverSyncActive = false;
     const IDB_NAME = 'invoiceflow_sync';
     const IDB_STORE = 'handles';
 
@@ -912,27 +915,44 @@
 
     let _syncPushTimer = null;
     function scheduleSyncPush() {
-      if (!syncFileHandle) return;
+      if (!syncFileHandle && !serverSyncActive) return;
       clearTimeout(_syncPushTimer);
       _syncPushTimer = setTimeout(() => { pushToSyncFile({ quiet: true }); }, 600);
     }
 
     function updateLastSaved() {
       const el = document.getElementById('last-saved');
-      if (el) el.textContent = 'Saved ' + new Date().toLocaleTimeString();
+      if (!el) return;
+      const t = new Date().toLocaleTimeString();
+      if (serverSyncActive || syncFileHandle) el.textContent = 'Saved to sync · ' + t;
+      else el.textContent = 'Saved locally · ' + t;
     }
 
     function updateSyncStatusUI() {
       const t = document.getElementById('sync-status-text');
       const d = document.getElementById('sync-status-detail');
       if (!t) return;
-      if (syncFileHandle) {
+      if (serverSyncActive) {
+        t.innerHTML = '<span style="color:var(--success)">● Linked (Dropbox app folder)</span> — auto-saves via Run InvoiceFlow';
+        d.textContent = 'Writing invoiceflow-data.json in the InvoiceFlow/app Dropbox folder. No Chrome file-picker needed on Mac/Safari.';
+      } else if (syncFileHandle) {
         t.innerHTML = '<span style="color:var(--success)">● Linked</span> — auto-saves to sync file';
         d.textContent = (syncFileHandle.name ? ('File: ' + syncFileHandle.name) : 'File linked') +
           ' · Keep this file inside Dropbox / iCloud / OneDrive so other PCs see it';
       } else {
         t.textContent = 'Not linked — data is local only on this browser';
-        d.textContent = 'Link a sync file (recommended) or use Export / Import between computers.';
+        d.textContent = 'On Mac: start with Run InvoiceFlow Mac (auto-links). On PC: Link Existing Sync File in Chrome/Edge, or use Run InvoiceFlow PC.';
+      }
+    }
+
+    async function probeServerSync() {
+      try {
+        const res = await fetch('/api/status', { cache: 'no-store' });
+        if (!res.ok) return false;
+        const j = await res.json();
+        return !!(j && j.ok);
+      } catch {
+        return false;
       }
     }
 
@@ -1026,6 +1046,20 @@
     async function pushToSyncFile(opts) {
       const quiet = opts && opts.quiet;
       try {
+        // Mac / local server path — no file picker API required
+        if (serverSyncActive) {
+          const res = await fetch('/api/data', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(serializeState())
+          });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok || body.ok === false) throw new Error(body.error || 'Server save failed');
+          if (!quiet) toast('Saved to Dropbox sync file');
+          updateSyncStatusUI();
+          updateLastSaved();
+          return;
+        }
         if (!syncFileHandle) {
           if (!quiet) toast('No sync file linked', 'error');
           return;
@@ -1037,6 +1071,7 @@
         await writable.close();
         if (!quiet) toast('Saved to sync file');
         updateSyncStatusUI();
+        updateLastSaved();
       } catch (e) {
         console.error(e);
         if (!quiet) toast('Sync save failed: ' + (e.message || e), 'error');
@@ -1046,11 +1081,23 @@
     async function pullFromSyncFile(opts) {
       const quiet = opts && opts.quiet;
       try {
-        if (!syncFileHandle) {
+        let data = null;
+
+        if (serverSyncActive) {
+          const res = await fetch('/api/data', { cache: 'no-store' });
+          const body = await res.json();
+          if (!res.ok) throw new Error(body.error || 'Server load failed');
+          data = body.data;
+          if (!data || (typeof data === 'object' && !Object.keys(data).length)) {
+            if (!quiet) toast('Sync file is empty — saving current data into it');
+            await pushToSyncFile({ quiet });
+            return;
+          }
+        } else if (!syncFileHandle) {
           // Fallback: file picker one-shot import
           if (quiet) return;
           if (!window.showOpenFilePicker) {
-            toast('Use Import JSON Backup instead', 'error');
+            toast('On Mac use Run InvoiceFlow Mac so sync auto-links. Or use Import JSON Backup.', 'error');
             return;
           }
           const [h] = await window.showOpenFilePicker({
@@ -1061,28 +1108,29 @@
           if (!ok) return;
           const file = await h.getFile();
           const text = await file.text();
-          const data = JSON.parse(text);
+          data = JSON.parse(text);
           if (!confirm('Replace local data with this file?')) return;
           applyData(data);
           navigate('dashboard');
           return;
+        } else {
+          const ok = await ensureSyncPermission(syncFileHandle, 'read');
+          if (!ok) { if (!quiet) toast('Permission needed', 'error'); return; }
+          const file = await syncFileHandle.getFile();
+          const text = await file.text();
+          if (!text || !text.trim()) {
+            if (!quiet) toast('Sync file is empty — saving current data into it');
+            await pushToSyncFile({ quiet });
+            return;
+          }
+          data = JSON.parse(text);
         }
-        const ok = await ensureSyncPermission(syncFileHandle, 'read');
-        if (!ok) { if (!quiet) toast('Permission needed', 'error'); return; }
-        const file = await syncFileHandle.getFile();
-        const text = await file.text();
-        if (!text || !text.trim()) {
-          if (!quiet) toast('Sync file is empty — saving current data into it');
-          await pushToSyncFile({ quiet });
-          return;
-        }
-        const data = JSON.parse(text);
+
         if (opts && opts.preferFileIfNewer) {
           const fileUpdated = data.updatedAt ? Date.parse(data.updatedAt) : 0;
           const localRaw = localStorage.getItem(STORAGE_KEY);
           let localUpdated = 0;
           try { localUpdated = localRaw ? Date.parse(JSON.parse(localRaw).updatedAt || 0) : 0; } catch (_) {}
-          // If local has more invoices and is newer, keep local and push
           const fileCount = (data.invoices || []).length;
           const localCount = state.invoices.length;
           if (localCount > 0 && localUpdated > fileUpdated && localCount >= fileCount) {
@@ -1093,7 +1141,7 @@
             await pushToSyncFile({ quiet: true });
             return;
           }
-        } else if (!quiet) {
+        } else if (!quiet && !serverSyncActive) {
           if (!confirm('Load sync file and replace data on this computer?')) return;
         }
         applyData(data, { silent: quiet });
@@ -1106,6 +1154,10 @@
     }
 
     async function unlinkSyncFile() {
+      if (serverSyncActive) {
+        toast('Server/Dropbox sync stays on while Run InvoiceFlow is running', 'error');
+        return;
+      }
       syncFileHandle = null;
       try { await idbDel('syncFile'); } catch (_) {}
       updateSyncStatusUI();
@@ -2143,10 +2195,21 @@
     }
 
     // Boot
-    loadState();
-    navigate('dashboard');
-    // Restore cloud sync file handle (Chrome/Edge) after a tick
-    setTimeout(() => { restoreSyncHandle(); }, 100);
+    (async function boot() {
+      loadState();
+      navigate('dashboard');
+      // Prefer local server sync (works on Mac/Safari with Run InvoiceFlow)
+      serverSyncActive = await probeServerSync();
+      if (serverSyncActive) {
+        updateSyncStatusUI();
+        await pullFromSyncFile({ quiet: true, preferFileIfNewer: true });
+        updateSyncStatusUI();
+        return;
+      }
+      // Chrome/Edge file-handle restore
+      await restoreSyncHandle();
+      updateSyncStatusUI();
+    })();
   </script>
 </body>
 </html>
