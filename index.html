@@ -295,6 +295,18 @@
       .stats { grid-template-columns: 1fr 1fr; }
       .mobile-menu-btn { display: flex; }
     }
+    
+    /* Hide number input spinners */
+    input[type=number]::-webkit-outer-spin-button,
+    input[type=number]::-webkit-inner-spin-button {
+      -webkit-appearance: none !important;
+      margin: 0 !important;
+    }
+    input[type=number] {
+      -moz-appearance: textfield !important;
+      appearance: textfield !important;
+    }
+
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
@@ -355,108 +367,36 @@
         <div class="page-header">
           <div>
             <h2>Dashboard</h2>
-            <p>Overview + quick labor / travel entry</p>
+            <p>Overview of your invoices</p>
           </div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <button class="btn btn-primary" onclick="navigate('create')">New Invoice</button>
+            <button class="btn btn-primary" onclick="startNewInvoice()">New Invoice</button>
           </div>
         </div>
 
         <div class="stats" id="dashboard-stats"></div>
 
-        <!-- QUICK LABOR / TRAVEL ENTRY -->
-        <div class="card quick-log-card">
-          <h3>Quick Log — Labor, Travel, After Hours & Expenses</h3>
-          <div class="form-grid-4" style="margin-bottom:12px">
-            <div class="form-group">
-              <label>Date</label>
-              <input type="date" id="ql-date" />
-            </div>
-            <div class="form-group">
-              <label>Type</label>
-              <select id="ql-type">
-                <option value="labor">Labor / Hours</option>
-                <option value="travel">Travel Time</option>
-                <option value="travelexpense">Travel Expense</option>
-                <option value="afterhours">After Hours</option>
-                <option value="mileage">Mileage</option>
-                <option value="materials">Materials / Parts</option>
-                <option value="other">Other Expense</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Client</label>
-              <select id="ql-client">
-                <option value="">— Select or type below —</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Client Name</label>
-              <input type="text" id="ql-client-name" placeholder="Client or job name" />
-            </div>
-          </div>
-          <div class="form-grid-4" style="margin-bottom:12px">
-            <div class="form-group">
-              <label>Description *</label>
-              <input type="text" id="ql-desc" placeholder="e.g. Site repair, drive to job, parts" />
-            </div>
-            <div class="form-group">
-              <label id="ql-qty-label">Hours</label>
-              <input type="number" id="ql-qty" min="0" step="0.25" value="1" />
-            </div>
-            <div class="form-group">
-              <label id="ql-rate-label">Rate ($/hr)</label>
-              <input type="number" id="ql-rate" min="0" step="0.01" value="75" />
-            </div>
-            <div class="form-group">
-              <label>Amount</label>
-              <input type="text" id="ql-amount" readonly style="background:var(--surface2);font-family:var(--mono);font-weight:600" value="$0.00" />
-            </div>
-          </div>
-          <div class="form-grid" style="margin-bottom:16px">
-            <div class="form-group">
-              <label>Notes (optional)</label>
-              <input type="text" id="ql-notes" placeholder="Job #, PO, location..." />
-            </div>
-            <div class="form-group" style="display:flex;align-items:flex-end;gap:12px">
-              <button class="btn btn-primary" onclick="addTimeEntry()" style="flex:1">
-                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                Add Entry
-              </button>
-              <button class="btn btn-secondary" onclick="clearQuickLog()">Clear</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- UNBILLED SUMMARY + RECENT -->
-        <div class="two-col">
-          <div class="card">
-            <div class="section-title">
-              <span>Unbilled Time & Expenses</span>
-              <button class="btn btn-sm btn-success" id="btn-invoice-selected" onclick="invoiceSelectedEntries()" disabled>Create Invoice from Selected</button>
-            </div>
-            <div id="unbilled-list"></div>
-          </div>
-          <div class="card">
-            <div class="section-title">
-              <span>Recent Invoices</span>
+        <div class="card">
+          <div class="section-title">
+            <span>Recent Invoices</span>
+            <div style="display:flex;gap:8px">
               <button class="btn btn-sm btn-secondary" onclick="navigate('invoices')">View All</button>
+              <button class="btn btn-sm btn-primary" onclick="startNewInvoice()">New Invoice</button>
             </div>
-            <div id="recent-invoices"></div>
           </div>
+          <div id="recent-invoices"></div>
         </div>
       </div>
 
-      
 
-      <!-- ==================== INVOICES ==================== -->
+            <!-- ==================== INVOICES ==================== -->
       <div id="page-invoices" class="page hidden">
         <div class="page-header">
           <div>
             <h2>Invoices</h2>
             <p>Manage and track all your invoices</p>
           </div>
-          <button class="btn btn-primary" onclick="navigate('create')">New Invoice</button>
+          <button class="btn btn-primary" onclick="startNewInvoice()">New Invoice</button>
         </div>
         <div class="filters">
           <div class="search-box">
@@ -644,7 +584,7 @@
           </div>
 
           <div class="settings-section">
-            <h3>Default Rates (used in Quick Log)</h3>
+            <h3>Default Rates (used for invoice line items)</h3>
             <div class="form-grid-4">
               <div class="form-group">
                 <label>Labor Rate ($/hr)</label>
@@ -865,7 +805,6 @@
 
     function applyLoadedData(data) {
       if (!data || typeof data !== 'object') return false;
-      // Ignore empty seed file {}
       const hasContent = data.business || (data.clients && data.clients.length) ||
         (data.invoices && data.invoices.length) || (data.timeEntries && data.timeEntries.length);
       if (!hasContent && data.nextInvNum == null) return false;
@@ -923,13 +862,11 @@
         fileStorageActive = true;
         const fileData = api.data && Object.keys(api.data).length ? api.data : null;
         if (fileData && applyLoadedData(fileData)) {
-          // Mirror into localStorage as a local cache only
           try { localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot())); } catch (_) {}
           updateLastSaved();
           updateStorageHelp();
           return;
         }
-        // File empty: migrate browser data into Dropbox file if present
         if (loadFromLocalStorage()) {
           await saveState();
           toast('Migrated browser data into Dropbox data.json');
@@ -949,7 +886,6 @@
 
     async function saveState() {
       const toSave = snapshot();
-      // Always keep a local cache
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave)); } catch (_) {}
 
       if (fileStorageActive) {
@@ -1010,7 +946,7 @@
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
     function typeLabel(t) {
-      return { labor:'Labor', travel:'Travel Time', travelexpense:'Travel Expense', afterhours:'After Hours', mileage:'Mileage', materials:'Materials', other:'Other', custom:'Custom' }[t] || t;
+      return { labor:'Labor', travel:'Travel Time', travelexpense:'Travel Expense', afterhours:'After Hours', mileage:'Mileage', materials:'Materials', parts:'Parts Sales', techsupport:'Tech Support', other:'Other', custom:'Custom' }[t] || t;
     }
 
     function getSelectedInvoiceClient() {
@@ -1023,6 +959,7 @@
 
     function effectiveRate(client, type) {
       const b = state.business;
+      if (type === 'techsupport') type = 'labor';
       if (type === 'labor') return (client && client.laborRate != null) ? client.laborRate : (b.laborRate || 75);
       if (type === 'travel') return (client && client.travelRate != null) ? client.travelRate : (b.travelRate || 50);
       if (type === 'afterhours') return (client && client.afterHoursRate != null) ? client.afterHoursRate : (b.afterHoursRate || 112.50);
@@ -1054,7 +991,7 @@
       const rateInput = tr.querySelector('.item-rate');
       const descInput = tr.querySelector('.item-desc');
       const client = getSelectedInvoiceClient();
-      if (type && type !== 'custom' && type !== 'materials' && type !== 'other' && type !== 'travelexpense') {
+      if (type && !['custom','materials','other','travelexpense','parts'].includes(type)) {
         rateInput.value = effectiveRate(client, type);
       } else if (type === 'materials' || type === 'other') {
         // leave rate as-is or 0 if empty
@@ -1076,7 +1013,7 @@
       document.querySelectorAll('#line-items tr').forEach(tr => {
         const t = tr.querySelector('.item-type')?.value;
         if (['labor','travel','afterhours'].includes(t)) hasLabor = true;
-        if (t === 'materials') hasParts = true;
+        if (t === 'materials' || t === 'parts') hasParts = true;
       });
       if (hasLabor && client.taxRateLabor != null) {
         $('inv-tax').value = client.taxRateLabor;
@@ -1091,7 +1028,7 @@
         const typeSel = tr.querySelector('.item-type');
         if (!typeSel) return;
         const type = typeSel.value;
-        if (type && type !== 'custom' && type !== 'materials' && type !== 'other' && type !== 'travelexpense') {
+        if (type && !['custom','materials','other','travelexpense','parts'].includes(type)) {
           const rateInput = tr.querySelector('.item-rate');
           if (rateInput) rateInput.value = effectiveRate(client, type);
         }
@@ -1117,7 +1054,10 @@
       if (page === 'settings') loadSettingsForm();
     }
     document.querySelectorAll('.nav-btn').forEach(btn => {
-      btn.addEventListener('click', () => navigate(btn.dataset.page));
+      btn.addEventListener('click', () => {
+        if (btn.dataset.page === 'create') startNewInvoice();
+        else navigate(btn.dataset.page);
+      });
     });
     $('menu-toggle')?.addEventListener('click', () => $('sidebar').classList.toggle('open'));
 
@@ -1232,28 +1172,16 @@
     function calcEntryAmount(e) { return (Number(e.qty)||0) * (Number(e.rate)||0); }
 
     function renderDashboard() {
-      setupQuickLog();
-
-      // Invoice stats
       const invs = state.invoices;
-      let totalRevenue = 0, outstanding = 0, overdue = 0, paidCount = 0;
+      let totalRevenue = 0, outstanding = 0, paidCount = 0;
       invs.forEach(inv => {
         const total = calcInvoiceTotal(inv);
         const paid = Number(inv.amountPaid || 0);
         totalRevenue += paid;
         const bal = total - paid;
-        if (bal > 0.01 && inv.status !== 'draft') {
-          outstanding += bal;
-          if (inv.dueDate && inv.dueDate < today() && inv.status !== 'paid') overdue += bal;
-        }
+        if (bal > 0.01 && inv.status !== 'draft') outstanding += bal;
         if (getStatus(inv) === 'paid') paidCount++;
       });
-
-      // Time stats
-      const unbilled = state.timeEntries.filter(e => !e.billed);
-      const unbilledAmt = unbilled.reduce((s,e) => s + calcEntryAmount(e), 0);
-      const unbilledHrs = unbilled.filter(e => e.type === 'labor' || e.type === 'travel')
-        .reduce((s,e) => s + (Number(e.qty)||0), 0);
 
       $('dashboard-stats').innerHTML = `
         <div class="stat-card blue">
@@ -1271,16 +1199,19 @@
           <div class="stat-value">${money(outstanding)}</div>
           <div class="stat-sub">Awaiting payment</div>
         </div>
-        `;
+        <div class="stat-card purple">
+          <div class="stat-label">Clients</div>
+          <div class="stat-value">${state.clients.length}</div>
+          <div class="stat-sub">in directory</div>
+        </div>`;
 
-      // Unbilled list (selectable)
-      renderUnbilledList();
-
-      // Recent invoices
-      const recent = [...invs].sort((a,b) => (b.date||'').localeCompare(a.date||'')).slice(0, 5);
-      $('recent-invoices').innerHTML = recent.length
-        ? renderInvoiceTable(recent, true)
-        : '<div class="empty"><p>No invoices yet</p></div>';
+      const recent = [...invs].sort((a,b) => (b.date||'').localeCompare(a.date||'')).slice(0, 8);
+      const el = $('recent-invoices');
+      if (el) {
+        el.innerHTML = recent.length
+          ? renderInvoiceTable(recent)
+          : '<div class="empty"><p>No invoices yet — click New Invoice to start</p></div>';
+      }
     }
 
     function renderUnbilledList() {
@@ -1326,8 +1257,7 @@
         if (checked) state.selectedTimeIds.add(e.id);
         else state.selectedTimeIds.delete(e.id);
       });
-      renderUnbilledList();
-    }
+          }
     function updateInvoiceSelectedBtn() {
       const n = state.selectedTimeIds.size;
       const btns = [$('btn-invoice-selected'), $('btn-invoice-selected-tl')];
@@ -1496,10 +1426,18 @@
     }
 
     // ---------- Create / Edit Invoice ----------
+    function startNewInvoice() {
+      state.editingId = null;
+      window._pendingBillEntries = null;
+      navigate('create');
+    }
+
     function initCreateForm() {
-      if (!window._pendingBillEntries) {
-        state.editingId = null;
+      // Only reset to blank "New Invoice" when we are not editing and not loading from time entries
+      if (!state.editingId && !window._pendingBillEntries) {
         $('create-title').textContent = 'New Invoice';
+        $('inv-number').readOnly = false;
+        $('inv-number').title = 'Invoice numbers are unique — like a filename';
         $('inv-number').value = (state.business.prefix || 'INV-') + String(state.nextInvNum).padStart(3, '0');
         $('inv-status').value = 'draft';
         $('inv-date').value = today();
@@ -1515,9 +1453,13 @@
         addLineItem();
         showClientRatesHint(null);
       }
-      // pending entries already filled by invoiceSelectedEntries
       populateClientSelect();
-      showClientRatesHint(getSelectedInvoiceClient());
+      if (state.editingId) {
+        const inv = state.invoices.find(i => i.id === state.editingId);
+        if (inv) showClientRatesHint(state.clients.find(c => c.name === inv.clientName) || null);
+      } else {
+        showClientRatesHint(getSelectedInvoiceClient());
+      }
       recalcTotals();
     }
 
@@ -1528,6 +1470,8 @@
       state.editingId = id;
       navigate('create');
       $('create-title').textContent = 'Edit Invoice ' + inv.number;
+      $('inv-number').readOnly = true;
+      $('inv-number').title = 'Invoice number is unique and locked while editing';
       $('inv-number').value = inv.number;
       $('inv-status').value = inv.status || 'draft';
       $('inv-date').value = inv.date || today();
@@ -1576,7 +1520,7 @@
       const type = item?.type || 'labor';
       let rate = item?.rate;
       if (rate == null || rate === undefined) {
-        rate = (type === 'materials' || type === 'other' || type === 'custom' || type === 'travelexpense') ? (item?.rate ?? 0) : effectiveRate(client, type);
+        rate = ['materials','other','custom','travelexpense','parts'].includes(type) ? (item?.rate ?? 0) : effectiveRate(client, type);
       }
       const typeOptions = [
         ['labor','Labor'],
@@ -1584,6 +1528,8 @@
         ['travelexpense','Travel Expense'],
         ['afterhours','After Hours'],
         ['mileage','Mileage'],
+        ['techsupport','Tech Support'],
+        ['parts','Parts Sales'],
         ['materials','Materials / Parts'],
         ['other','Other Expense'],
         ['custom','Custom (manual rate)']
@@ -1648,8 +1594,26 @@
       const items = collectItems();
       if (!items.length) return toast('Add at least one line item', 'error');
 
+      // Invoice number = unique filename. Always update existing record with same number.
+      let existingIdx = -1;
+      if (state.editingId) {
+        existingIdx = state.invoices.findIndex(i => i.id === state.editingId);
+      }
+      // Also match by number so we never create a duplicate number
+      if (existingIdx < 0) {
+        existingIdx = state.invoices.findIndex(i => i.number === number);
+      }
+      // If editing one invoice but number matches a DIFFERENT invoice, block rename collision
+      if (state.editingId && existingIdx >= 0) {
+        const byNumber = state.invoices.find(i => i.number === number && i.id !== state.editingId);
+        if (byNumber) {
+          return toast('Invoice number "' + number + '" already exists. Numbers are unique.', 'error');
+        }
+        existingIdx = state.invoices.findIndex(i => i.id === state.editingId);
+      }
+
       const inv = {
-        id: state.editingId || uid(),
+        id: existingIdx >= 0 ? state.invoices[existingIdx].id : uid(),
         number,
         status: $('inv-status').value,
         date: $('inv-date').value,
@@ -1664,11 +1628,12 @@
         updatedAt: new Date().toISOString()
       };
 
-      if (state.editingId) {
-        const idx = state.invoices.findIndex(i => i.id === state.editingId);
-        if (idx >= 0) state.invoices[idx] = inv;
+      if (existingIdx >= 0) {
+        state.invoices[existingIdx] = inv;
+        state.editingId = inv.id;
       } else {
         state.invoices.push(inv);
+        state.editingId = inv.id;
         const numPart = parseInt(number.replace(/\D/g, ''), 10);
         if (!isNaN(numPart) && numPart >= state.nextInvNum) state.nextInvNum = numPart + 1;
       }
@@ -1690,13 +1655,15 @@
       }
 
       saveState();
-      toast(state.editingId ? 'Invoice updated' : 'Invoice created');
+      toast(existingIdx >= 0 ? 'Invoice updated' : 'Invoice created');
       if (!keepOpen) {
         state.editingId = null;
         navigate('invoices');
       } else {
         state.editingId = inv.id;
         $('create-title').textContent = 'Edit Invoice ' + inv.number;
+      $('inv-number').readOnly = true;
+      $('inv-number').title = 'Invoice number is unique and locked while editing';
       }
     }
 
@@ -1868,6 +1835,7 @@
         </div>
         <table class="preview-table">
           <thead><tr>
+            <th>Item</th>
             <th>Description</th>
             <th style="text-align:right">Qty</th>
             <th style="text-align:right">Rate</th>
@@ -1876,6 +1844,7 @@
           <tbody>
             ${(inv.items||[]).map(it => `
               <tr>
+                <td style="white-space:nowrap;font-weight:600;color:#334155">${esc(typeLabel(it.type || 'custom'))}</td>
                 <td>${esc(it.desc)}</td>
                 <td style="text-align:right">${it.qty}</td>
                 <td style="text-align:right">${money(it.rate)}</td>
