@@ -191,6 +191,7 @@
     .badge-materials { background: rgba(16,185,129,0.2); color: #34d399; }
     .badge-other { background: rgba(139,156,179,0.2); color: var(--text-muted); }
     .badge-afterhours { background: rgba(239,68,68,0.2); color: #f87171; }
+    .badge-travelexpense { background: rgba(245,158,11,0.25); color: #fbbf24; }
     .row-actions { display: flex; gap: 6px; opacity: 0.75; flex-wrap: wrap; }
     tr:hover .row-actions { opacity: 1; }
     .empty { text-align: center; padding: 48px 20px; color: var(--text-muted); }
@@ -270,6 +271,10 @@
     .quick-log-card h3 { font-size: 16px; margin-bottom: 16px; }
     .checkbox-cell { width: 40px; text-align: center; }
     .checkbox-cell input { width: auto; cursor: pointer; }
+    .rate-pills { display: flex; flex-wrap: wrap; gap: 6px; font-size: 11px; align-items: center; }
+    .rate-pill { background: var(--surface2); border: 1px solid var(--border); padding: 2px 8px; border-radius: 12px; color: var(--text-muted); }
+    .rate-pill strong { color: var(--text); }
+    .rate-pill em { opacity: 0.7; font-style: normal; }
     .section-title {
       font-size: 16px; font-weight: 600; margin-bottom: 16px;
       display: flex; justify-content: space-between; align-items: center;
@@ -372,6 +377,7 @@
               <select id="ql-type">
                 <option value="labor">Labor / Hours</option>
                 <option value="travel">Travel Time</option>
+                <option value="travelexpense">Travel Expense</option>
                 <option value="afterhours">After Hours</option>
                 <option value="mileage">Mileage</option>
                 <option value="materials">Materials / Parts</option>
@@ -517,22 +523,25 @@
             </div>
             <div class="form-group">
               <label>Client Name *</label>
-              <input type="text" id="inv-client-name" placeholder="Acme Corp" required />
+              <input type="text" id="inv-client-name" placeholder="Acme Corp" required onchange="refreshAllLineRates()" onblur="refreshAllLineRates()" />
             </div>
             <div class="form-group full">
               <label>Client Address / Email</label>
               <textarea id="inv-client-address" placeholder="123 Main St&#10;client@email.com" rows="2"></textarea>
             </div>
           </div>
-          <h3 style="margin:28px 0 12px;font-size:15px">Line Items</h3>
+          <div id="inv-client-rates" style="margin:8px 0 4px;font-size:13px;color:var(--text-muted)"></div>
+          <h3 style="margin:20px 0 12px;font-size:15px">Line Items</h3>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Select an <strong>Item</strong> type to auto-fill the rate from the selected client (or global defaults).</p>
           <table class="items-table">
             <thead>
               <tr>
-                <th style="width:40%">Description</th>
+                <th style="width:16%">Item</th>
+                <th style="width:32%">Description</th>
                 <th style="width:12%">Qty</th>
-                <th style="width:18%">Rate</th>
-                <th style="width:18%">Amount</th>
-                <th style="width:12%"></th>
+                <th style="width:16%">Rate</th>
+                <th style="width:14%">Amount</th>
+                <th style="width:10%"></th>
               </tr>
             </thead>
             <tbody id="line-items"></tbody>
@@ -899,10 +908,10 @@
       if (fileStorageActive) {
         el.innerHTML = '<strong style="color:#34d399">Dropbox file storage is ON.</strong> ' +
           'Data is written to <code>data.json</code> in your InvoiceFlow Dropbox folder and syncs to the cloud. ' +
-          'Always start the app with <code>OPEN-ME.command</code> (not by double-clicking index.html).';
+          'Always start the app with <code>OPEN-ME.command</code> / <code>OPEN-ME.bat</code> (not by double-clicking index.html).';
       } else {
         el.innerHTML = '<strong style="color:#fbbf24">Browser-only mode.</strong> ' +
-          'Start with <code>OPEN-ME.command</code> so data saves to Dropbox as <code>data.json</code>. ' +
+          'Start with <code>OPEN-ME.command</code> or <code>OPEN-ME.bat</code> so data saves to Dropbox as <code>data.json</code>. ' +
           'Opening index.html directly only uses temporary browser storage.';
       }
     }
@@ -1001,7 +1010,95 @@
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
     function typeLabel(t) {
-      return { labor:'Labor', travel:'Travel', afterhours:'After Hours', mileage:'Mileage', materials:'Materials', other:'Other' }[t] || t;
+      return { labor:'Labor', travel:'Travel Time', travelexpense:'Travel Expense', afterhours:'After Hours', mileage:'Mileage', materials:'Materials', other:'Other', custom:'Custom' }[t] || t;
+    }
+
+    function getSelectedInvoiceClient() {
+      const id = $('inv-client')?.value;
+      if (id) return state.clients.find(c => c.id === id) || null;
+      const name = $('inv-client-name')?.value?.trim();
+      if (name) return state.clients.find(c => c.name === name) || null;
+      return null;
+    }
+
+    function effectiveRate(client, type) {
+      const b = state.business;
+      if (type === 'labor') return (client && client.laborRate != null) ? client.laborRate : (b.laborRate || 75);
+      if (type === 'travel') return (client && client.travelRate != null) ? client.travelRate : (b.travelRate || 50);
+      if (type === 'afterhours') return (client && client.afterHoursRate != null) ? client.afterHoursRate : (b.afterHoursRate || 112.50);
+      if (type === 'mileage') return (client && client.mileageRate != null) ? client.mileageRate : (b.mileageRate || 0.70);
+      return 0; // materials / other / custom — user enters
+    }
+
+    function showClientRatesHint(c) {
+      const el = $('inv-client-rates');
+      if (!el) return;
+      if (!c) { el.innerHTML = '<span style="color:var(--text-muted)">Select a client to use their rates on line items</span>'; return; }
+      const parts = [];
+      if (c.laborRate != null) parts.push('Labor <strong>$' + c.laborRate + '/hr</strong>');
+      else parts.push('Labor <strong>$' + (state.business.laborRate||75) + '/hr</strong> <em>(global)</em>');
+      if (c.travelRate != null) parts.push('Travel <strong>$' + c.travelRate + '/hr</strong>');
+      else parts.push('Travel <strong>$' + (state.business.travelRate||50) + '/hr</strong> <em>(global)</em>');
+      if (c.afterHoursRate != null) parts.push('After Hrs <strong>$' + c.afterHoursRate + '/hr</strong>');
+      else parts.push('After Hrs <strong>$' + (state.business.afterHoursRate||112.50) + '/hr</strong> <em>(global)</em>');
+      if (c.taxRateLabor != null) parts.push('Tax Labor <strong>' + c.taxRateLabor + '%</strong>');
+      if (c.taxRateParts != null) parts.push('Tax Parts <strong>' + c.taxRateParts + '%</strong>');
+      el.innerHTML = '<div class="rate-pills">Rates for <strong>' + esc(c.name) + '</strong>: ' +
+        parts.map(p => '<span class="rate-pill">' + p + '</span>').join('') + '</div>';
+    }
+
+    function onLineTypeChange(selectEl) {
+      const tr = selectEl.closest('tr');
+      if (!tr) return;
+      const type = selectEl.value;
+      const rateInput = tr.querySelector('.item-rate');
+      const descInput = tr.querySelector('.item-desc');
+      const client = getSelectedInvoiceClient();
+      if (type && type !== 'custom' && type !== 'materials' && type !== 'other' && type !== 'travelexpense') {
+        rateInput.value = effectiveRate(client, type);
+      } else if (type === 'materials' || type === 'other') {
+        // leave rate as-is or 0 if empty
+        if (!rateInput.value || rateInput.value === '0') rateInput.value = 0;
+      }
+      // Suggest description if empty
+      if (descInput && !descInput.value.trim() && type && type !== 'custom') {
+        descInput.placeholder = typeLabel(type) + '…';
+      }
+      // Suggest tax from client
+      suggestTaxFromLines();
+      recalcTotals();
+    }
+
+    function suggestTaxFromLines() {
+      const client = getSelectedInvoiceClient();
+      if (!client) return;
+      let hasLabor = false, hasParts = false;
+      document.querySelectorAll('#line-items tr').forEach(tr => {
+        const t = tr.querySelector('.item-type')?.value;
+        if (['labor','travel','afterhours'].includes(t)) hasLabor = true;
+        if (t === 'materials') hasParts = true;
+      });
+      if (hasLabor && client.taxRateLabor != null) {
+        $('inv-tax').value = client.taxRateLabor;
+      } else if (hasParts && client.taxRateParts != null) {
+        $('inv-tax').value = client.taxRateParts;
+      }
+    }
+
+    function refreshAllLineRates() {
+      const client = getSelectedInvoiceClient();
+      document.querySelectorAll('#line-items tr').forEach(tr => {
+        const typeSel = tr.querySelector('.item-type');
+        if (!typeSel) return;
+        const type = typeSel.value;
+        if (type && type !== 'custom' && type !== 'materials' && type !== 'other' && type !== 'travelexpense') {
+          const rateInput = tr.querySelector('.item-rate');
+          if (rateInput) rateInput.value = effectiveRate(client, type);
+        }
+      });
+      showClientRatesHint(client);
+      suggestTaxFromLines();
+      recalcTotals();
     }
 
     // ---------- Navigation ----------
@@ -1060,6 +1157,9 @@
       } else if (t === 'mileage') {
         qtyL.textContent = 'Miles'; rateL.textContent = 'Rate ($/mi)';
         $('ql-rate').value = state.business.mileageRate || 0.70;
+      } else if (t === 'travelexpense') {
+        qtyL.textContent = 'Qty'; rateL.textContent = 'Amount ($)';
+        $('ql-rate').value = 0;
       } else {
         qtyL.textContent = 'Qty'; rateL.textContent = 'Unit Cost ($)';
         $('ql-rate').value = 0;
@@ -1261,17 +1361,21 @@
         if (match) {
           $('inv-client').value = match.id;
           $('inv-client-address').value = [match.email, match.phone, match.address].filter(Boolean).join('\n');
+          if (match.taxRateLabor != null) $('inv-tax').value = match.taxRateLabor;
+          showClientRatesHint(match);
+        } else {
+          showClientRatesHint(null);
         }
         $('line-items').innerHTML = '';
         entries.forEach(e => {
-          const unit = e.type === 'mileage' ? 'mi' : (e.type === 'labor' || e.type === 'travel' ? 'hr' : '');
-          const desc = `${typeLabel(e.type)}: ${e.desc}${e.date ? ' ('+e.date+')' : ''}${unit ? ' ['+e.qty+' '+unit+']' : ''}`;
-          addLineItem({ desc, qty: e.qty, rate: e.rate });
+          const unit = e.type === 'mileage' ? 'mi' : (['labor','travel','afterhours'].includes(e.type) ? 'hr' : '');
+          const desc = e.desc + (e.date ? ' ('+e.date+')' : '') + (unit ? ' ['+e.qty+' '+unit+']' : '');
+          addLineItem({ type: e.type || 'labor', desc, qty: e.qty, rate: e.rate });
         });
-        // Store which entries to mark billed on save
         window._pendingBillEntries = entries.map(e => e.id);
         toast(`${entries.length} entries loaded into invoice`);
         state.selectedTimeIds.clear();
+        recalcTotals();
       }, 50);
     }
 
@@ -1409,9 +1513,11 @@
         $('inv-notes').value = state.business.terms || '';
         $('line-items').innerHTML = '';
         addLineItem();
+        showClientRatesHint(null);
       }
       // pending entries already filled by invoiceSelectedEntries
       populateClientSelect();
+      showClientRatesHint(getSelectedInvoiceClient());
       recalcTotals();
     }
 
@@ -1437,7 +1543,8 @@
       if (!(inv.items || []).length) addLineItem();
       populateClientSelect();
       const match = state.clients.find(c => c.name === inv.clientName);
-      if (match) $('inv-client').value = match.id;
+      if (match) { $('inv-client').value = match.id; showClientRatesHint(match); }
+      else showClientRatesHint(null);
       recalcTotals();
     }
 
@@ -1449,23 +1556,51 @@
     }
     function fillClientDetails() {
       const id = $('inv-client').value;
-      if (!id) return;
+      if (!id) {
+        showClientRatesHint(null);
+        return;
+      }
       const c = state.clients.find(x => x.id === id);
       if (c) {
         $('inv-client-name').value = c.name;
         $('inv-client-address').value = [c.email, c.phone, c.address].filter(Boolean).join('\n');
+        if (c.taxRateLabor != null) $('inv-tax').value = c.taxRateLabor;
+        else if (c.taxRateParts != null) $('inv-tax').value = c.taxRateParts;
+        showClientRatesHint(c);
+        refreshAllLineRates();
       }
     }
 
     function addLineItem(item = null) {
+      const client = getSelectedInvoiceClient();
+      const type = item?.type || 'labor';
+      let rate = item?.rate;
+      if (rate == null || rate === undefined) {
+        rate = (type === 'materials' || type === 'other' || type === 'custom' || type === 'travelexpense') ? (item?.rate ?? 0) : effectiveRate(client, type);
+      }
+      const typeOptions = [
+        ['labor','Labor'],
+        ['travel','Travel Time'],
+        ['travelexpense','Travel Expense'],
+        ['afterhours','After Hours'],
+        ['mileage','Mileage'],
+        ['materials','Materials / Parts'],
+        ['other','Other Expense'],
+        ['custom','Custom (manual rate)']
+      ].map(([v,l]) => `<option value="${v}" ${type===v?'selected':''}>${l}</option>`).join('');
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><input type="text" class="item-desc" placeholder="Service or product" value="${esc(item?.desc || '')}" oninput="recalcTotals()" /></td>
+        <td>
+          <select class="item-type" onchange="onLineTypeChange(this)" style="padding:8px 10px;font-size:13px">
+            ${typeOptions}
+          </select>
+        </td>
+        <td><input type="text" class="item-desc" placeholder="Description / notes" value="${esc(item?.desc || '')}" oninput="recalcTotals()" /></td>
         <td><input type="number" class="item-qty" min="0" step="0.01" value="${item?.qty ?? 1}" oninput="recalcTotals()" /></td>
-        <td><input type="number" class="item-rate" min="0" step="0.01" value="${item?.rate ?? 0}" oninput="recalcTotals()" /></td>
+        <td><input type="number" class="item-rate" min="0" step="0.01" value="${rate}" oninput="recalcTotals()" /></td>
         <td class="amount-cell item-amount">$0.00</td>
         <td style="text-align:center">
-          <button class="btn btn-sm btn-danger" onclick="this.closest('tr').remove();recalcTotals()">✕</button>
+          <button class="btn btn-sm btn-danger" onclick="this.closest('tr').remove();suggestTaxFromLines();recalcTotals()">✕</button>
         </td>`;
       $('line-items').appendChild(tr);
       recalcTotals();
@@ -1496,10 +1631,11 @@
     function collectItems() {
       const items = [];
       document.querySelectorAll('#line-items tr').forEach(tr => {
+        const type = tr.querySelector('.item-type')?.value || 'custom';
         const desc = tr.querySelector('.item-desc')?.value?.trim();
         const qty = Number(tr.querySelector('.item-qty')?.value) || 0;
         const rate = Number(tr.querySelector('.item-rate')?.value) || 0;
-        if (desc || qty || rate) items.push({ desc: desc || '', qty, rate });
+        if (desc || qty || rate) items.push({ type, desc: desc || typeLabel(type), qty, rate });
       });
       return items;
     }
@@ -1844,7 +1980,7 @@
       await loadState();
       navigate('dashboard');
       if (!fileStorageActive) {
-        console.warn('InvoiceFlow: file storage offline. Launch OPEN-ME.command so data saves to Dropbox.');
+        console.warn('InvoiceFlow: file storage offline. Launch OPEN-ME so data saves to Dropbox.');
       }
     })();
   </script>
