@@ -1,0 +1,25 @@
+InvoiceFlow — how to open
+
+MAC
+1. Open Dropbox → InvoiceFlow
+2. Double-click OPEN-ME.command
+   (first time: right-click → Open)
+3. Use the app at http://127.0.0.1:8765
+4. Leave the Terminal window open while working
+
+WINDOWS
+1. Install Python 3 if needed: https://www.python.org/downloads/
+   - Check "Add python.exe to PATH" during install
+2. Wait for Dropbox to finish syncing the InvoiceFlow folder
+3. Open Dropbox → InvoiceFlow
+4. Double-click OPEN-ME.bat
+5. Use the app at http://127.0.0.1:8765
+6. Leave the black Command window open while working
+
+IMPORTANT
+- Always start with OPEN-ME (not by opening index.html alone)
+- Data lives in data.json and syncs via Dropbox
+- Only use the app on ONE computer at a time so Dropbox does not create conflicted copies
+- Wait for Dropbox to finish syncing before switching machines
+
+If the browser does not open, visit: http://127.0.0.1:8765
