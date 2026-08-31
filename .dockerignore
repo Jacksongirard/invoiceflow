@@ -1,0 +1,16 @@
+.git
+.gitignore
+*.md
+docs
+data
+*.bat
+*.command
+*.ps1
+"Run InvoiceFlow Linux.sh"
+"Run InvoiceFlow Mac.command"
+"Run InvoiceFlow NAS.sh"
+"Run InvoiceFlow PC.bat"
+OPEN-ME.bat
+OPEN-ME.command
+HOW-TO-USE.txt
+LICENSE

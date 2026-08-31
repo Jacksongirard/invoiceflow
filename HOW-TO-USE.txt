@@ -1,12 +1,31 @@
-InvoiceFlow — how to open (Windows / Mac / Linux)
+InvoiceFlow — how to open (NAS / Windows / Mac / Linux)
 
 DATA
   Shared invoices/clients live in:
-    InvoiceFlow/app/invoiceflow-data.json
-  Dropbox (or another cloud sync client) keeps that file in sync.
+    InvoiceFlow/app/invoiceflow-data.json   (Dropbox / desktop launchers)
+    InvoiceFlow/data/invoiceflow-data.json  (Docker / NAS)
 
-  Use only ONE computer at a time for editing.
-  Wait for cloud sync to finish before switching machines.
+  Use only ONE device at a time for editing.
+  Wait for cloud/NAS save to finish before switching machines.
+
+------------------------------------------------------------------------
+NAS (phones, tablets, PCs on the same Wi-Fi)
+  Recommended: Docker
+    1. Copy the InvoiceFlow folder onto the NAS
+    2. In that folder:  docker compose up -d
+       Synology: Container Manager → Project → this folder
+    3. Open http://YOUR-NAS-IP:8765  (not 127.0.0.1)
+    4. Settings → Multi-Device Sync shows Linked (NAS / LAN server)
+
+  No Docker:
+    chmod +x "Run InvoiceFlow NAS.sh"
+    ./Run\ InvoiceFlow\ NAS.sh
+    or:  python3 server.py --lan
+
+  Move old data: Settings → Export JSON, then Import on the NAS app.
+  Full steps: docs/NAS.md
+
+  Do NOT port-forward 8765 to the internet (no login on this app).
 
 ------------------------------------------------------------------------
 WINDOWS (primary PC)
@@ -49,8 +68,11 @@ LINUX
 
 ------------------------------------------------------------------------
 SETTINGS / SYNC STATUS
-  With Run InvoiceFlow open, Settings → Multi-Device Sync should show
-  something like:  Linked (Dropbox app folder)
+  NAS / docker / python3 --lan:
+    Settings → Multi-Device Sync shows Linked (NAS / LAN server)
+
+  Dropbox + Run InvoiceFlow on a PC/Mac:
+    Settings → Multi-Device Sync shows Linked (Dropbox app folder)
 
   Do NOT open index.html by double-click alone for daily use
   (that skips the server and can break multi-device sync).
