@@ -176,7 +176,7 @@ class Handler(SimpleHTTPRequestHandler):
         if path == "/api/data":
             if DATA_FILE.exists():
                 try:
-                    raw = DATA_FILE.read_text(encoding="utf-8")
+                    raw = DATA_FILE.read_text(encoding="utf-8-sig")
                     data = json.loads(raw) if raw.strip() else {}
                 except Exception as e:
                     self._send_json(500, {"error": str(e)})

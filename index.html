@@ -2219,6 +2219,7 @@
         updateSyncStatusUI();
         await pullFromSyncFile({ quiet: true, preferFileIfNewer: true });
         updateSyncStatusUI();
+        navigate('dashboard');
         return;
       }
       // Chrome/Edge file-handle restore
