@@ -1,3 +1,7 @@
+# Extra docs
+
+- **[NAS.md](NAS.md)** — run InvoiceFlow on a Synology / QNAP / Unraid / TrueNAS (or any Docker NAS) so every device on the LAN shares the same invoices.
+
 # Hosting on GitHub Pages
 
 1. Push this repo to GitHub

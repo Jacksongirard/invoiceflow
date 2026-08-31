@@ -7,3 +7,9 @@ node_modules/
 .env
 data.json
 data.json.tmp
+invoiceflow-data.json
+invoiceflow-data.json.tmp
+data/*.json
+data/*.json.tmp
+__pycache__/
+*.pyc

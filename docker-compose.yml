@@ -1,0 +1,23 @@
+# Copy this whole InvoiceFlow folder onto the NAS, then:
+#   docker compose up -d
+# Open http://YOUR-NAS-IP:8765
+#
+# Invoices are stored in ./data/invoiceflow-data.json (easy to back up).
+# Do not expose port 8765 to the internet — this app has no login.
+
+services:
+  invoiceflow:
+    image: python:3.12-alpine
+    container_name: invoiceflow
+    working_dir: /app
+    command: ["python3", "server.py", "--lan", "--data", "/app/data/invoiceflow-data.json"]
+    ports:
+      - "8765:8765"
+    volumes:
+      - .:/app
+    restart: unless-stopped
+    environment:
+      INVOICEFLOW_HOST: "0.0.0.0"
+      INVOICEFLOW_PORT: "8765"
+      INVOICEFLOW_DATA: "/app/data/invoiceflow-data.json"
+

@@ -31,6 +31,17 @@ A single-file web app — no install, no account, no server. Just open it in you
 
 ## Quick Start
 
+### NAS (phones, tablets, and PCs on your home network)
+
+Copy this folder to the NAS, then:
+
+```bash
+docker compose up -d
+```
+
+Open **http://YOUR-NAS-IP:8765** (example: `http://192.168.1.50:8765`).  
+Full steps for Synology, QNAP, Unraid, TrueNAS, and Python-without-Docker: **[docs/NAS.md](docs/NAS.md)**.
+
 ### Recommended — Dropbox multi-device (Windows / Mac / Linux)
 
 Keep the app in a synced folder (e.g. Dropbox) with this layout:
@@ -72,6 +83,9 @@ Works for a quick look, but multi-device Dropbox sync needs the launcher/server 
 cd app   # or repo root if flat
 python3 server.py
 # http://127.0.0.1:8765/index.html
+
+# NAS / LAN (other devices on the same network):
+python3 server.py --lan
 ```
 
 ## Screenshots
@@ -104,6 +118,7 @@ Change these anytime under **Settings**.
 
 - **Export JSON** (Invoices page or Settings) regularly  
 - Import the JSON on another computer/browser to restore everything  
+- On a NAS, also back up `data/invoiceflow-data.json` (or the Dropbox `app/invoiceflow-data.json`)
 
 ## Tech
 
