@@ -2,8 +2,26 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
   <title>InvoiceFlow</title>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('invoiceflow_theme');
+        if (t !== 'light' && t !== 'dark') {
+          var raw = localStorage.getItem('invoiceflow_data_v3')
+            || localStorage.getItem('invoiceflow_data_v2')
+            || localStorage.getItem('invoiceflow_data_v1');
+          if (raw) t = (JSON.parse(raw).business || {}).theme;
+        }
+        if (t === 'light' || t === 'dark') {
+          document.documentElement.setAttribute('data-theme', t);
+          document.documentElement.style.colorScheme = t;
+        }
+      } catch (e) {}
+    })();
+  </script>
   <style>
     :root {
       --bg: #0f1419;
@@ -22,8 +40,59 @@
       --shadow: 0 4px 24px rgba(0,0,0,0.4);
       --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       --mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+      --color-scheme: dark;
+      --primary-soft: rgba(59,130,246,0.15);
+      --focus-ring: rgba(59,130,246,0.22);
+      --danger-soft: rgba(239,68,68,0.15);
+      --danger-border: rgba(239,68,68,0.3);
+      --row-hover: rgba(255,255,255,0.03);
+      --overlay: rgba(0,0,0,0.55);
+      --preview-stage: #0b1220;
+      --teal: #14b8a6;
+      --badge-sent-fg: #60a5fa;
+      --badge-paid-fg: #34d399;
+      --badge-overdue-fg: #f87171;
+      --badge-partial-fg: #fbbf24;
+      --badge-accent-fg: #a78bfa;
+      --paper-bg: #ffffff;
+      --paper-text: #1a1a1a;
+      --paper-muted: #64748b;
+      --paper-line: #e2e8f0;
+      --paper-head: #f1f5f9;
+      --paper-accent: #1e40af;
     }
+    html[data-theme="light"] {
+      --bg: #f3f6fa;
+      --surface: #ffffff;
+      --surface2: #eef2f7;
+      --border: #d5deea;
+      --text: #152033;
+      --text-muted: #5b6b80;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --success: #059669;
+      --warning: #d97706;
+      --danger: #dc2626;
+      --accent: #7c3aed;
+      --shadow: 0 4px 24px rgba(21,32,51,0.08);
+      --color-scheme: light;
+      --primary-soft: rgba(37,99,235,0.12);
+      --focus-ring: rgba(37,99,235,0.2);
+      --danger-soft: rgba(220,38,38,0.1);
+      --danger-border: rgba(220,38,38,0.28);
+      --row-hover: rgba(21,32,51,0.035);
+      --overlay: rgba(15,23,42,0.4);
+      --preview-stage: #d8e0ea;
+      --teal: #0f766e;
+      --badge-sent-fg: #1d4ed8;
+      --badge-paid-fg: #047857;
+      --badge-overdue-fg: #b91c1c;
+      --badge-partial-fg: #b45309;
+      --badge-accent-fg: #6d28d9;
+    }
+    html { color-scheme: var(--color-scheme); }
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { -webkit-text-size-adjust: 100%; }
     body {
       font-family: var(--font);
       background: var(--bg);
@@ -32,6 +101,7 @@
       min-height: 100vh;
       overflow-x: hidden;
     }
+    body.nav-open { overflow: hidden; }
     .app {
       display: grid;
       grid-template-columns: 260px 1fr;
@@ -75,10 +145,11 @@
       font-family: var(--font);
     }
     .nav-btn:hover { background: var(--surface2); color: var(--text); }
-    .nav-btn.active { background: rgba(59,130,246,0.15); color: var(--primary); }
+    .nav-btn.active { background: var(--primary-soft); color: var(--primary); }
     .nav-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
+    .sidebar > .theme-toggle { margin-top: auto; }
     .sidebar-footer {
-      margin-top: auto; padding-top: 16px;
+      padding-top: 16px;
       border-top: 1px solid var(--border);
       font-size: 12px; color: var(--text-muted); text-align: center;
     }
@@ -101,8 +172,8 @@
     .btn-secondary:hover { background: var(--border); }
     .btn-success { background: var(--success); color: white; }
     .btn-success:hover { filter: brightness(1.1); }
-    .btn-danger { background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
-    .btn-danger:hover { background: rgba(239,68,68,0.25); }
+    .btn-danger { background: var(--danger-soft); color: var(--danger); border: 1px solid var(--danger-border); }
+    .btn-danger:hover { filter: brightness(0.97); }
     .btn-sm { padding: 6px 12px; font-size: 13px; }
     .btn-icon { padding: 8px; }
     .card {
@@ -122,7 +193,7 @@
     .stat-card.green::before { background: var(--success); }
     .stat-card.orange::before { background: var(--warning); }
     .stat-card.purple::before { background: var(--accent); }
-    .stat-card.teal::before { background: #14b8a6; }
+    .stat-card.teal::before { background: var(--teal); }
     .stat-label { font-size: 13px; color: var(--text-muted); font-weight: 500; margin-bottom: 8px; }
     .stat-value { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; }
     .stat-sub { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
@@ -139,7 +210,7 @@
     }
     input:focus, select:focus, textarea:focus {
       outline: none; border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(59,130,246,0.2);
+      box-shadow: 0 0 0 3px var(--focus-ring);
     }
     textarea { resize: vertical; min-height: 80px; }
     .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
@@ -173,31 +244,31 @@
       border-bottom: 1px solid var(--border); background: var(--surface); position: sticky; top: 0;
     }
     .invoice-table td { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 14px; }
-    .invoice-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .invoice-table tr:hover td { background: var(--row-hover); }
     .invoice-table .mono { font-family: var(--mono); font-size: 13px; }
     .badge {
       display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 20px;
       font-size: 12px; font-weight: 600; text-transform: capitalize;
     }
     .badge-draft { background: rgba(139,156,179,0.2); color: var(--text-muted); }
-    .badge-sent { background: rgba(59,130,246,0.2); color: #60a5fa; }
-    .badge-paid { background: rgba(16,185,129,0.2); color: #34d399; }
-    .badge-overdue { background: rgba(239,68,68,0.2); color: #f87171; }
-    .badge-partial { background: rgba(245,158,11,0.2); color: #fbbf24; }
-    .badge-unbilled { background: rgba(139,92,246,0.2); color: #a78bfa; }
-    .badge-billed { background: rgba(16,185,129,0.15); color: #34d399; }
-    .badge-labor { background: rgba(59,130,246,0.2); color: #60a5fa; }
-    .badge-travel { background: rgba(245,158,11,0.2); color: #fbbf24; }
-    .badge-materials { background: rgba(16,185,129,0.2); color: #34d399; }
+    .badge-sent { background: rgba(59,130,246,0.16); color: var(--badge-sent-fg); }
+    .badge-paid { background: rgba(16,185,129,0.16); color: var(--badge-paid-fg); }
+    .badge-overdue { background: rgba(239,68,68,0.16); color: var(--badge-overdue-fg); }
+    .badge-partial { background: rgba(245,158,11,0.18); color: var(--badge-partial-fg); }
+    .badge-unbilled { background: rgba(139,92,246,0.16); color: var(--badge-accent-fg); }
+    .badge-billed { background: rgba(16,185,129,0.14); color: var(--badge-paid-fg); }
+    .badge-labor { background: rgba(59,130,246,0.16); color: var(--badge-sent-fg); }
+    .badge-travel { background: rgba(245,158,11,0.18); color: var(--badge-partial-fg); }
+    .badge-materials { background: rgba(16,185,129,0.16); color: var(--badge-paid-fg); }
     .badge-other { background: rgba(139,156,179,0.2); color: var(--text-muted); }
-    .badge-afterhours { background: rgba(239,68,68,0.2); color: #f87171; }
-    .badge-travelexpense { background: rgba(245,158,11,0.25); color: #fbbf24; }
+    .badge-afterhours { background: rgba(239,68,68,0.16); color: var(--badge-overdue-fg); }
+    .badge-travelexpense { background: rgba(245,158,11,0.2); color: var(--badge-partial-fg); }
     .row-actions { display: flex; gap: 6px; opacity: 0.75; flex-wrap: wrap; }
     tr:hover .row-actions { opacity: 1; }
     .empty { text-align: center; padding: 48px 20px; color: var(--text-muted); }
     .empty h3 { font-size: 18px; color: var(--text); margin-bottom: 8px; }
     .modal-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      position: fixed; inset: 0; background: var(--overlay);
       display: flex; align-items: center; justify-content: center;
       z-index: 1000; padding: 20px; backdrop-filter: blur(4px);
     }
@@ -236,36 +307,76 @@
       to { transform: translateY(0); opacity: 1; }
     }
     .invoice-preview {
-      background: white; color: #1a1a1a; border-radius: 8px;
+      background: var(--paper-bg); color: var(--paper-text); border-radius: 8px;
       padding: 40px; font-size: 13px; max-width: 800px; margin: 0 auto;
       font-family: var(--font);
     }
-    .invoice-preview h1 { font-size: 28px; color: #1e40af; margin-bottom: 4px; }
+    .invoice-preview h1 { font-size: 28px; color: var(--paper-accent); margin-bottom: 4px; }
     .preview-header { display: flex; justify-content: space-between; margin-bottom: 32px; }
     .preview-meta { text-align: right; }
-    .preview-meta .inv-num { font-size: 20px; font-weight: 700; color: #1e40af; }
+    .preview-meta .inv-num { font-size: 20px; font-weight: 700; color: var(--paper-accent); }
     .preview-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
     .preview-parties h4 {
       font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
-      color: #64748b; margin-bottom: 8px;
+      color: var(--paper-muted); margin-bottom: 8px;
     }
     .preview-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
     .preview-table th {
-      background: #f1f5f9; padding: 10px 12px; text-align: left;
-      font-size: 11px; text-transform: uppercase; color: #64748b;
+      background: var(--paper-head); padding: 10px 12px; text-align: left;
+      font-size: 11px; text-transform: uppercase; color: var(--paper-muted);
     }
-    .preview-table td { padding: 12px; border-bottom: 1px solid #e2e8f0; }
+    .preview-table td { padding: 12px; border-bottom: 1px solid var(--paper-line); }
     .preview-totals { display: flex; justify-content: flex-end; }
     .preview-totals table { width: 280px; }
     .preview-totals td { padding: 6px 0; }
     .preview-totals .grand td {
-      font-weight: 700; font-size: 16px; border-top: 2px solid #1e40af; padding-top: 10px;
+      font-weight: 700; font-size: 16px; border-top: 2px solid var(--paper-accent); padding-top: 10px;
     }
     .hidden { display: none !important; }
-    .mobile-menu-btn {
-      display: none; background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 8px; padding: 8px; color: var(--text); cursor: pointer;
+    .topbar {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
     }
+    .topbar-title { font-weight: 700; font-size: 16px; letter-spacing: -0.3px; flex: 1; }
+    .mobile-menu-btn, .theme-toggle, .sidebar-close {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 8px; color: var(--text); cursor: pointer;
+      font-family: var(--font);
+    }
+    .mobile-menu-btn { display: none; }
+    .theme-toggle {
+      gap: 8px;
+      min-height: 40px;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      width: 100%;
+    }
+    .theme-toggle svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .theme-toggle .icon-moon { display: none; }
+    .theme-toggle .theme-label-to-dark { display: none; }
+    html[data-theme="light"] .theme-toggle .icon-sun { display: none; }
+    html[data-theme="light"] .theme-toggle .icon-moon { display: inline; }
+    html[data-theme="light"] .theme-toggle .theme-label-to-light { display: none; }
+    html[data-theme="light"] .theme-toggle .theme-label-to-dark { display: inline; }
+    .theme-toggle-compact { width: auto; min-width: 44px; padding: 8px; }
+    .theme-toggle-compact .theme-label { display: none; }
+    .nav-backdrop {
+      display: none;
+      position: fixed; inset: 0;
+      background: var(--overlay);
+      z-index: 450;
+    }
+    .nav-backdrop.open { display: block; }
+    .sidebar-close { display: none; }
     .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     .quick-log-card { margin-bottom: 24px; }
     .quick-log-card h3 { font-size: 16px; margin-bottom: 16px; }
@@ -280,7 +391,7 @@
       width: auto; cursor: pointer; accent-color: var(--primary);
     }
     .print-label {
-      font-size: 11px; color: #64748b; margin: 0 0 18px;
+      font-size: 11px; color: var(--paper-muted); margin: 0 0 18px;
       letter-spacing: 0.01em;
     }
     .badge-paid-date { text-transform: none; letter-spacing: 0; }
@@ -294,6 +405,20 @@
       font-size: 16px; font-weight: 600; margin-bottom: 16px;
       display: flex; justify-content: space-between; align-items: center;
     }
+    @media (hover: none) and (pointer: coarse) {
+      input, select, textarea {
+        font-size: 16px;
+        min-height: 44px;
+      }
+      .items-table input, .items-table select {
+        font-size: 16px;
+        min-height: 44px;
+      }
+      .btn { min-height: 44px; }
+      .btn-sm { min-height: 40px; }
+      input[type="checkbox"] { width: 22px; height: 22px; }
+      .taxable-label { min-height: 44px; font-size: 15px; }
+    }
     @media (max-width: 1100px) {
       .form-grid-4 { grid-template-columns: 1fr 1fr; }
       .two-col { grid-template-columns: 1fr; }
@@ -301,14 +426,126 @@
     @media (max-width: 900px) {
       .app { grid-template-columns: 1fr; }
       .sidebar {
-        position: fixed; left: -280px; z-index: 500;
-        transition: left 0.25s; width: 260px;
+        position: fixed; left: 0; z-index: 500;
+        transform: translateX(-110%);
+        transition: transform 0.22s ease;
+        width: min(300px, 88vw);
+        padding-top: max(20px, env(safe-area-inset-top));
+        padding-bottom: max(16px, env(safe-area-inset-bottom));
+        box-shadow: var(--shadow);
       }
-      .sidebar.open { left: 0; }
-      .main { padding: 20px 16px; }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-close { display: inline-flex; margin-left: auto; min-width: 44px; min-height: 44px; }
+      .logo { padding-right: 4px; }
+      .main {
+        padding: 0 16px 24px;
+        padding-left: max(16px, env(safe-area-inset-left));
+        padding-right: max(16px, env(safe-area-inset-right));
+        padding-bottom: max(24px, env(safe-area-inset-bottom));
+        max-height: none;
+      }
+      .topbar {
+        display: flex;
+        margin: 0 -16px 16px;
+        margin-left: calc(-1 * max(16px, env(safe-area-inset-left)));
+        margin-right: calc(-1 * max(16px, env(safe-area-inset-right)));
+        padding: 10px 16px;
+        padding-top: max(10px, env(safe-area-inset-top));
+        padding-left: max(16px, env(safe-area-inset-left));
+        padding-right: max(16px, env(safe-area-inset-right));
+      }
       .form-grid, .form-grid-3, .form-grid-4 { grid-template-columns: 1fr; }
       .stats { grid-template-columns: 1fr 1fr; }
-      .mobile-menu-btn { display: flex; }
+      .mobile-menu-btn { display: inline-flex; min-width: 44px; min-height: 44px; }
+      .nav-btn { min-height: 48px; font-size: 16px; padding: 14px 16px; }
+      .btn { min-height: 44px; padding: 12px 16px; }
+      .btn-sm { min-height: 40px; padding: 8px 12px; font-size: 14px; }
+      .btn-icon { min-width: 44px; min-height: 44px; }
+      input, select, textarea {
+        font-size: 16px;
+        min-height: 44px;
+        padding: 12px 14px;
+      }
+      textarea { min-height: 88px; }
+      .items-table input, .items-table select {
+        font-size: 16px;
+        min-height: 44px;
+        padding: 10px 12px;
+      }
+      .page-header h2 { font-size: 24px; }
+      .totals { justify-content: stretch; }
+      .totals-box { width: 100%; max-width: 100%; }
+      .totals-box input { width: 100% !important; min-width: 96px; }
+      .modal-overlay { padding: 12px; align-items: flex-end; }
+      .modal { max-height: 92vh; border-radius: 16px 16px 12px 12px; }
+      .toast { left: 16px; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); max-width: none; }
+      .preview-parties { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 700px) {
+      .stats { grid-template-columns: 1fr; }
+      .items-table thead { display: none; }
+      .items-table, .items-table tbody { display: block; width: 100%; }
+      .items-table tr {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px 12px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 12px;
+      }
+      .items-table td {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+        padding: 0;
+        border: none;
+        width: auto;
+      }
+      .items-table td[data-span="full"] { grid-column: 1 / -1; }
+      .items-table td::before {
+        content: attr(data-label);
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .items-table td[data-label=""]::before { display: none; }
+      table.stack-on-mobile thead { display: none; }
+      table.stack-on-mobile, table.stack-on-mobile tbody { display: block; width: 100%; }
+      table.stack-on-mobile tr {
+        display: block;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px 14px;
+        margin: 10px;
+        background: var(--bg);
+      }
+      table.stack-on-mobile td {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        border: none;
+        padding: 7px 0;
+        font-size: 15px;
+      }
+      table.stack-on-mobile td::before {
+        content: attr(data-label);
+        color: var(--text-muted);
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        flex-shrink: 0;
+        padding-top: 2px;
+      }
+      table.stack-on-mobile td[data-label="Actions"] { display: block; padding-top: 10px; }
+      table.stack-on-mobile td[data-label="Actions"]::before { display: none; }
+      table.stack-on-mobile .row-actions { opacity: 1; }
     }
     
     /* Hide number input spinners */
@@ -341,6 +578,7 @@
   </style>
 </head>
 <body>
+  <div class="nav-backdrop" id="nav-backdrop"></div>
   <div class="app" id="app">
     <aside class="sidebar" id="sidebar">
       <div class="logo">
@@ -348,6 +586,9 @@
         <div>
           <h1>InvoiceFlow</h1>
         </div>
+        <button type="button" class="sidebar-close" id="sidebar-close" aria-label="Close menu">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
       </div>
       <button class="nav-btn active" data-page="dashboard">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
@@ -373,6 +614,12 @@
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
         Settings
       </button>
+      <button type="button" class="theme-toggle" id="theme-toggle-sidebar" aria-label="Switch to light theme">
+        <svg class="icon-sun" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364 6.364l-1.414-1.414M7.05 7.05L5.636 5.636m12.728 0L16.95 7.05M7.05 16.95l-1.414 1.414M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        <svg class="icon-moon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 14.5A8.5 8.5 0 1111.5 3 7 7 0 0021 14.5z"/></svg>
+        <span class="theme-label theme-label-to-light">Light mode</span>
+        <span class="theme-label theme-label-to-dark">Dark mode</span>
+      </button>
       <div class="sidebar-footer">
         Local + sync file<br>
         <span id="last-saved">—</span>
@@ -380,9 +627,18 @@
     </aside>
 
     <main class="main">
-      <button class="mobile-menu-btn" id="menu-toggle" style="margin-bottom:16px">
-        <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
-      </button>
+      <header class="topbar">
+        <button type="button" class="mobile-menu-btn" id="menu-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
+          <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <div class="topbar-title">InvoiceFlow</div>
+        <button type="button" class="theme-toggle theme-toggle-compact" id="theme-toggle-top" aria-label="Switch to light theme">
+          <svg class="icon-sun" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364 6.364l-1.414-1.414M7.05 7.05L5.636 5.636m12.728 0L16.95 7.05M7.05 16.95l-1.414 1.414M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+          <svg class="icon-moon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 14.5A8.5 8.5 0 1111.5 3 7 7 0 0021 14.5z"/></svg>
+          <span class="theme-label theme-label-to-light">Light mode</span>
+          <span class="theme-label theme-label-to-dark">Dark mode</span>
+        </button>
+      </header>
 
       <!-- ==================== DASHBOARD ==================== -->
       <div id="page-dashboard" class="page">
@@ -525,17 +781,17 @@
               </div>
               <div class="total-row" style="align-items:center;gap:12px">
                 <span>Tax %</span>
-                <input type="number" id="inv-tax" value="0" min="0" step="0.01" style="width:80px;text-align:right" oninput="recalcTotals()" />
+                <input type="number" id="inv-tax" value="0" min="0" step="0.01" inputmode="decimal" style="width:80px;text-align:right" oninput="recalcTotals()" />
               </div>
               <div class="total-row"><span>Tax Amount</span><span class="value" id="tax-amount">$0.00</span></div>
               <div class="total-row" style="align-items:center;gap:12px">
                 <span>Discount</span>
-                <input type="number" id="inv-discount" value="0" min="0" step="0.01" style="width:80px;text-align:right" oninput="recalcTotals()" />
+                <input type="number" id="inv-discount" value="0" min="0" step="0.01" inputmode="decimal" style="width:80px;text-align:right" oninput="recalcTotals()" />
               </div>
               <div class="total-row grand"><span>Total</span><span class="value" id="grand-total">$0.00</span></div>
               <div class="total-row" style="align-items:center;gap:12px;margin-top:8px">
                 <span>Amount Paid</span>
-                <input type="number" id="inv-paid" value="0" min="0" step="0.01" style="width:100px;text-align:right" oninput="recalcTotals()" />
+                <input type="number" id="inv-paid" value="0" min="0" step="0.01" inputmode="decimal" style="width:100px;text-align:right" oninput="recalcTotals()" />
               </div>
               <div class="total-row" style="color:var(--warning)"><span>Balance Due</span><span class="value" id="balance-due">$0.00</span></div>
             </div>
@@ -601,7 +857,7 @@
               </div>
               <div class="form-group">
                 <label>Phone</label>
-                <input type="text" id="biz-phone" placeholder="(555) 123-4567" />
+                <input type="tel" id="biz-phone" placeholder="(555) 123-4567" inputmode="tel" autocomplete="tel" />
               </div>
               <div class="form-group">
                 <label>Website</label>
@@ -617,7 +873,7 @@
               </div>
               <div class="form-group">
                 <label>Default Tax Rate %</label>
-                <input type="number" id="biz-taxrate" value="0" min="0" step="0.01" />
+                <input type="number" id="biz-taxrate" value="0" min="0" step="0.01" inputmode="decimal" />
               </div>
               <div class="form-group">
                 <label>Currency Symbol</label>
@@ -635,21 +891,34 @@
             <div class="form-grid-4">
               <div class="form-group">
                 <label>Labor Rate ($/hr)</label>
-                <input type="number" id="biz-labor-rate" value="75" min="0" step="0.01" />
+                <input type="number" id="biz-labor-rate" value="75" min="0" step="0.01" inputmode="decimal" />
               </div>
               <div class="form-group">
                 <label>Travel Rate ($/hr)</label>
-                <input type="number" id="biz-travel-rate" value="50" min="0" step="0.01" />
+                <input type="number" id="biz-travel-rate" value="50" min="0" step="0.01" inputmode="decimal" />
               </div>
               <div class="form-group">
                 <label>After Hours Rate ($/hr)</label>
-                <input type="number" id="biz-afterhours-rate" value="112.50" min="0" step="0.01" />
+                <input type="number" id="biz-afterhours-rate" value="112.50" min="0" step="0.01" inputmode="decimal" />
               </div>
               <div class="form-group">
                 <label>Mileage Rate ($/mi)</label>
-                <input type="number" id="biz-mileage-rate" value="0.70" min="0" step="0.01" />
+                <input type="number" id="biz-mileage-rate" value="0.70" min="0" step="0.01" inputmode="decimal" />
               </div>
             </div>
+          </div>
+
+          <div class="settings-section">
+            <h3>Appearance</h3>
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.5">
+              Light or dark theme for this browser. Saved on this device so a NAS/Dropbox sync does not flip the other screen.
+            </p>
+            <button type="button" class="theme-toggle" id="theme-toggle-settings" aria-label="Switch to light theme" style="max-width:280px">
+              <svg class="icon-sun" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364 6.364l-1.414-1.414M7.05 7.05L5.636 5.636m12.728 0L16.95 7.05M7.05 16.95l-1.414 1.414M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+              <svg class="icon-moon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 14.5A8.5 8.5 0 1111.5 3 7 7 0 0021 14.5z"/></svg>
+              <span class="theme-label theme-label-to-light">Use light theme</span>
+              <span class="theme-label theme-label-to-dark">Use dark theme</span>
+            </button>
           </div>
 
           <div class="settings-section">
@@ -702,7 +971,7 @@
           </div>
           <div class="form-group">
             <label>Phone</label>
-            <input type="text" id="client-phone" />
+            <input type="tel" id="client-phone" inputmode="tel" autocomplete="tel" />
           </div>
           <div class="form-group">
             <label>Address</label>
@@ -713,27 +982,27 @@
         <div class="form-grid-3" style="margin-bottom:8px">
           <div class="form-group">
             <label>Labor Rate ($/hr)</label>
-            <input type="number" id="client-labor" min="0" step="0.01" placeholder="e.g. 85" />
+            <input type="number" id="client-labor" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 85" />
           </div>
           <div class="form-group">
             <label>Travel Time ($/hr)</label>
-            <input type="number" id="client-travel" min="0" step="0.01" placeholder="e.g. 55" />
+            <input type="number" id="client-travel" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 55" />
           </div>
           <div class="form-group">
             <label>After Hours ($/hr)</label>
-            <input type="number" id="client-afterhours" min="0" step="0.01" placeholder="e.g. 125" />
+            <input type="number" id="client-afterhours" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 125" />
           </div>
           <div class="form-group">
             <label>Tax Rate Labor %</label>
-            <input type="number" id="client-tax-labor" min="0" step="0.01" placeholder="e.g. 0 or 8.25" />
+            <input type="number" id="client-tax-labor" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 0 or 8.25" />
           </div>
           <div class="form-group">
             <label>Tax Rate Parts %</label>
-            <input type="number" id="client-tax-parts" min="0" step="0.01" placeholder="e.g. 8.25" />
+            <input type="number" id="client-tax-parts" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 8.25" />
           </div>
           <div class="form-group">
             <label>Mileage ($/mi)</label>
-            <input type="number" id="client-mileage" min="0" step="0.01" placeholder="optional" />
+            <input type="number" id="client-mileage" min="0" step="0.01" inputmode="decimal" placeholder="optional" />
           </div>
         </div>
         <p style="font-size:12px;color:var(--text-muted)">Tax Labor / Tax Parts suggest the invoice tax %. Each line’s Taxable checkbox controls whether that line is included in sales tax.</p>
@@ -786,7 +1055,7 @@
           </div>
           <div class="form-group" id="lit-default-rate-wrap" style="display:none">
             <label>Default rate</label>
-            <input type="number" id="lit-default-rate" min="0" step="0.01" value="0" />
+            <input type="number" id="lit-default-rate" min="0" step="0.01" inputmode="decimal" value="0" />
           </div>
           <div class="form-group">
             <label>Tax group</label>
@@ -847,11 +1116,11 @@
           </div>
           <div class="form-group">
             <label id="te-qty-label">Hours / Qty</label>
-            <input type="number" id="te-qty" min="0" step="0.01" />
+            <input type="number" id="te-qty" min="0" step="0.01" inputmode="decimal" />
           </div>
           <div class="form-group">
             <label id="te-rate-label">Rate</label>
-            <input type="number" id="te-rate" min="0" step="0.01" />
+            <input type="number" id="te-rate" min="0" step="0.01" inputmode="decimal" />
           </div>
           <div class="form-group full">
             <label>Notes</label>
@@ -878,7 +1147,7 @@
           </button>
         </div>
       </div>
-      <div class="modal-body" style="background:#e2e8f0;padding:24px">
+      <div class="modal-body" style="background:var(--preview-stage);padding:24px">
         <div id="preview-content" class="invoice-preview"></div>
       </div>
     </div>
@@ -888,6 +1157,7 @@
 
   <script>
     const STORAGE_KEY = 'invoiceflow_data_v3';
+    const THEME_KEY = 'invoiceflow_theme';
     let state = {
       business: {
         name: '', email: '', phone: '', website: '', address: '',
@@ -1098,6 +1368,13 @@
       if (!state.business.travelRate) state.business.travelRate = 50;
       if (state.business.afterHoursRate == null) state.business.afterHoursRate = 112.50;
       if (!state.business.mileageRate) state.business.mileageRate = 0.70;
+      let storedTheme = null;
+      try { storedTheme = localStorage.getItem(THEME_KEY); } catch (e) {}
+      if (storedTheme === 'light' || storedTheme === 'dark') {
+        applyTheme(storedTheme, { persist: false });
+      } else if (state.business.theme === 'light' || state.business.theme === 'dark') {
+        applyTheme(state.business.theme);
+      }
       // local cache
       localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState()));
       updateLastSaved();
@@ -1390,6 +1667,45 @@
 
     // ---------- Utils ----------
     function $(id) { return document.getElementById(id); }
+
+    function currentTheme() {
+      const attr = document.documentElement.getAttribute('data-theme');
+      if (attr === 'light' || attr === 'dark') return attr;
+      try {
+        const stored = localStorage.getItem(THEME_KEY);
+        if (stored === 'light' || stored === 'dark') return stored;
+      } catch (e) {}
+      return 'dark';
+    }
+    function applyTheme(theme, { persist } = {}) {
+      const next = theme === 'light' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      document.documentElement.style.colorScheme = next;
+      const label = next === 'light' ? 'Switch to dark theme' : 'Switch to light theme';
+      document.querySelectorAll('.theme-toggle').forEach(btn => btn.setAttribute('aria-label', label));
+      if (persist === false) return;
+      try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+      if (state.business) state.business.theme = next;
+    }
+    function toggleTheme() {
+      applyTheme(currentTheme() === 'light' ? 'dark' : 'light');
+      try { saveState(); } catch (e) {}
+    }
+    function enhanceNumericInputs(root) {
+      (root || document).querySelectorAll('input[type="number"]').forEach(el => {
+        if (!el.getAttribute('inputmode')) el.setAttribute('inputmode', 'decimal');
+      });
+    }
+    function setSidebarOpen(open) {
+      const sidebar = $('sidebar');
+      const backdrop = $('nav-backdrop');
+      const toggle = $('menu-toggle');
+      if (!sidebar) return;
+      sidebar.classList.toggle('open', !!open);
+      if (backdrop) backdrop.classList.toggle('open', !!open);
+      document.body.classList.toggle('nav-open', !!open);
+      if (toggle) toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
     function money(n) {
       const c = state.business.currency || '$';
       return c + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1580,7 +1896,7 @@
       if (el) el.classList.remove('hidden');
       const btn = document.querySelector('.nav-btn[data-page="' + page + '"]');
       if (btn) btn.classList.add('active');
-      $('sidebar').classList.remove('open');
+      setSidebarOpen(false);
       if (page === 'dashboard') renderDashboard();
       if (page === 'invoices') renderInvoices();
       if (page === 'create') initCreateForm();
@@ -1594,7 +1910,15 @@
         else navigate(btn.dataset.page);
       });
     });
-    $('menu-toggle')?.addEventListener('click', () => $('sidebar').classList.toggle('open'));
+    $('menu-toggle')?.addEventListener('click', () => setSidebarOpen(!$('sidebar').classList.contains('open')));
+    $('sidebar-close')?.addEventListener('click', () => setSidebarOpen(false));
+    $('nav-backdrop')?.addEventListener('click', () => setSidebarOpen(false));
+    document.querySelectorAll('.theme-toggle').forEach(btn => {
+      btn.addEventListener('click', toggleTheme);
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && $('sidebar')?.classList.contains('open')) setSidebarOpen(false);
+    });
 
     // ---------- Quick Log helpers ----------
     function setupQuickLog() {
@@ -1924,23 +2248,23 @@
       if (!list.length) {
         return `<div class="empty"><h3>No invoices found</h3><p>Create your first invoice</p></div>`;
       }
-      return `<table class="invoice-table">
+      return `<table class="invoice-table stack-on-mobile">
         <thead><tr>
           <th>Number</th><th>Client</th><th>Date</th><th>Due</th><th>Amount</th><th>Status</th><th style="width:150px">Actions</th>
         </tr></thead>
         <tbody>
           ${list.map(inv => {
             return `<tr>
-              <td class="mono">${esc(inv.number)}</td>
-              <td>${esc(inv.clientName || '—')}</td>
-              <td>${inv.date || '—'}</td>
-              <td>${inv.dueDate || '—'}</td>
-              <td class="mono">${money(calcInvoiceTotal(inv))}</td>
-              <td>${statusBadgeHTML(inv)}</td>
-              <td><div class="row-actions">
+              <td class="mono" data-label="Number">${esc(inv.number)}</td>
+              <td data-label="Client">${esc(inv.clientName || '—')}</td>
+              <td data-label="Date">${inv.date || '—'}</td>
+              <td data-label="Due">${inv.dueDate || '—'}</td>
+              <td class="mono" data-label="Amount">${money(calcInvoiceTotal(inv))}</td>
+              <td data-label="Status">${statusBadgeHTML(inv)}</td>
+              <td data-label="Actions"><div class="row-actions">
                 <button class="btn btn-sm btn-secondary" onclick="previewInvoice('${inv.id}')">PDF</button>
                 <button class="btn btn-sm btn-secondary" onclick="editInvoice('${inv.id}')">Edit</button>
-                <button class="btn btn-sm btn-danger" onclick="deleteInvoice('${inv.id}')">✕</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteInvoice('${inv.id}')">Delete</button>
               </div></td>
             </tr>`;
           }).join('')}
@@ -2095,25 +2419,26 @@
       const typeOptions = lineItemTypeOptionsHtml(type);
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>
-          <select class="item-type" onchange="onLineTypeChange(this)" style="padding:8px 10px;font-size:13px">
+        <td data-label="Item" data-span="full">
+          <select class="item-type" onchange="onLineTypeChange(this)">
             ${typeOptions}
           </select>
         </td>
-        <td><input type="text" class="item-desc" placeholder="Description / notes" value="${esc(item?.desc || '')}" oninput="recalcTotals()" /></td>
-        <td><input type="number" class="item-qty" min="0" step="0.01" value="${item?.qty ?? 1}" oninput="recalcTotals()" /></td>
-        <td><input type="number" class="item-rate" min="0" step="0.01" value="${rate}" oninput="recalcTotals()" /></td>
-        <td>
+        <td data-label="Description" data-span="full"><input type="text" class="item-desc" placeholder="Description / notes" value="${esc(item?.desc || '')}" oninput="recalcTotals()" /></td>
+        <td data-label="Qty"><input type="number" class="item-qty" min="0" step="0.01" inputmode="decimal" value="${item?.qty ?? 1}" oninput="recalcTotals()" /></td>
+        <td data-label="Rate"><input type="number" class="item-rate" min="0" step="0.01" inputmode="decimal" value="${rate}" oninput="recalcTotals()" /></td>
+        <td data-label="Taxable">
           <label class="taxable-label" title="Include this line in sales tax">
             <input type="checkbox" class="item-taxable" ${taxable ? 'checked' : ''} onchange="recalcTotals()" />
             Taxable
           </label>
         </td>
-        <td class="amount-cell item-amount">$0.00</td>
-        <td style="text-align:center">
-          <button class="btn btn-sm btn-danger" onclick="this.closest('tr').remove();suggestTaxFromLines();recalcTotals()">✕</button>
+        <td data-label="Amount" class="amount-cell item-amount">$0.00</td>
+        <td data-label="" data-span="full" style="text-align:center">
+          <button class="btn btn-sm btn-danger" onclick="this.closest('tr').remove();suggestTaxFromLines();recalcTotals()">Remove line</button>
         </td>`;
       $('line-items').appendChild(tr);
+      enhanceNumericInputs(tr);
       recalcTotals();
     }
 
@@ -2283,7 +2608,7 @@
         $('clients-list').innerHTML = `<div class="empty"><h3>No clients yet</h3><p>Add clients for faster invoicing</p></div>`;
         return;
       }
-      $('clients-list').innerHTML = `<table class="invoice-table">
+      $('clients-list').innerHTML = `<table class="invoice-table stack-on-mobile">
         <thead><tr>
           <th>Name</th><th>Contact</th>
           <th>Labor</th><th>Travel</th><th>After Hrs</th>
@@ -2292,16 +2617,16 @@
         </tr></thead>
         <tbody>
           ${state.clients.map(c => `<tr>
-            <td><strong>${esc(c.name)}</strong></td>
-            <td style="font-size:13px">${esc(c.email || c.phone || '—')}</td>
-            <td class="mono">${c.laborRate != null ? '$'+c.laborRate : '—'}</td>
-            <td class="mono">${c.travelRate != null ? '$'+c.travelRate : '—'}</td>
-            <td class="mono">${c.afterHoursRate != null ? '$'+c.afterHoursRate : '—'}</td>
-            <td class="mono">${c.taxRateLabor != null ? c.taxRateLabor+'%' : '—'}</td>
-            <td class="mono">${c.taxRateParts != null ? c.taxRateParts+'%' : '—'}</td>
-            <td><div class="row-actions">
+            <td data-label="Name"><strong>${esc(c.name)}</strong></td>
+            <td data-label="Contact" style="font-size:13px">${esc(c.email || c.phone || '—')}</td>
+            <td class="mono" data-label="Labor">${c.laborRate != null ? '$'+c.laborRate : '—'}</td>
+            <td class="mono" data-label="Travel">${c.travelRate != null ? '$'+c.travelRate : '—'}</td>
+            <td class="mono" data-label="After Hrs">${c.afterHoursRate != null ? '$'+c.afterHoursRate : '—'}</td>
+            <td class="mono" data-label="Tax Labor">${c.taxRateLabor != null ? c.taxRateLabor+'%' : '—'}</td>
+            <td class="mono" data-label="Tax Parts">${c.taxRateParts != null ? c.taxRateParts+'%' : '—'}</td>
+            <td data-label="Actions"><div class="row-actions">
               <button class="btn btn-sm btn-secondary" onclick="editClient('${c.id}')">Edit</button>
-              <button class="btn btn-sm btn-danger" onclick="deleteClient('${c.id}')">✕</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteClient('${c.id}')">Delete</button>
             </div></td>
           </tr>`).join('')}
         </tbody></table>`;
@@ -2397,7 +2722,7 @@
         el.innerHTML = `<div class="empty"><h3>No line item types</h3><p>Add a type to populate the invoice Item dropdown</p></div>`;
         return;
       }
-      el.innerHTML = `<table class="invoice-table">
+      el.innerHTML = `<table class="invoice-table stack-on-mobile">
         <thead><tr>
           <th>Name</th>
           <th>Key</th>
@@ -2415,16 +2740,16 @@
               ? ` title="${used.lines} line${used.lines!==1?'s':''} on ${used.invoices} invoice${used.invoices!==1?'s':''}${used.time ? ', '+used.time+' time entries' : ''}"`
               : '';
             return `<tr class="${t.enabled === false ? 'row-disabled' : ''}"${usedHint}>
-              <td><strong>${esc(t.label)}</strong></td>
-              <td class="mono">${esc(t.key)}</td>
-              <td>${esc(unitDisplay(t.unit))}</td>
-              <td>${esc(rateSourceLabel(t))}</td>
-              <td>${esc(taxGroupLabel(t.taxGroup))}</td>
-              <td>${t.taxableDefault !== false ? 'Yes' : 'No'}</td>
-              <td>${t.enabled === false
+              <td data-label="Name"><strong>${esc(t.label)}</strong></td>
+              <td class="mono" data-label="Key">${esc(t.key)}</td>
+              <td data-label="Unit">${esc(unitDisplay(t.unit))}</td>
+              <td data-label="Rate">${esc(rateSourceLabel(t))}</td>
+              <td data-label="Tax group">${esc(taxGroupLabel(t.taxGroup))}</td>
+              <td data-label="Taxable">${t.taxableDefault !== false ? 'Yes' : 'No'}</td>
+              <td data-label="Status">${t.enabled === false
                 ? '<span class="badge badge-disabled">Disabled</span>'
                 : '<span class="badge badge-paid">Active</span>'}</td>
-              <td><div class="row-actions">
+              <td data-label="Actions"><div class="row-actions">
                 <button class="btn btn-sm btn-secondary" onclick="openLineItemTypeModal('${esc(t.key)}')">Edit</button>
                 ${t.enabled === false
                   ? `<button class="btn btn-sm btn-secondary" onclick="setLineItemTypeEnabled('${esc(t.key)}', true)">Enable</button>`
@@ -2562,6 +2887,7 @@
     }
     function saveSettings() {
       state.business = {
+        ...state.business,
         name: $('biz-name').value.trim(),
         email: $('biz-email').value.trim(),
         phone: $('biz-phone').value.trim(),
@@ -2575,7 +2901,8 @@
         laborRate: Number($('biz-labor-rate').value) || 75,
         travelRate: Number($('biz-travel-rate').value) || 50,
         afterHoursRate: Number($('biz-afterhours-rate').value) || 112.50,
-        mileageRate: Number($('biz-mileage-rate').value) || 0.70
+        mileageRate: Number($('biz-mileage-rate').value) || 0.70,
+        theme: currentTheme()
       };
       saveState();
       toast('Settings saved');
@@ -2757,6 +3084,8 @@
     // Boot
     (async function boot() {
       loadState();
+      applyTheme(currentTheme(), { persist: false });
+      enhanceNumericInputs(document);
       navigate('dashboard');
       // Prefer local server sync (works on Mac/Safari with Run InvoiceFlow)
       serverSyncActive = await probeServerSync();
