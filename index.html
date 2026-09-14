@@ -368,7 +368,10 @@
     html[data-theme="light"] .theme-toggle .theme-label-to-light { display: none; }
     html[data-theme="light"] .theme-toggle .theme-label-to-dark { display: inline; }
     .theme-toggle-compact { width: auto; min-width: 44px; padding: 8px; }
-    .theme-toggle-compact .theme-label { display: none; }
+    .theme-toggle-compact .theme-label,
+    html[data-theme="light"] .theme-toggle-compact .theme-label {
+      display: none;
+    }
     .nav-backdrop {
       display: none;
       position: fixed; inset: 0;
@@ -845,6 +848,19 @@
         </div>
         <div class="card">
           <div class="settings-section">
+            <h3>Appearance</h3>
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.5">
+              Light or dark theme for this browser. Saved on this device so a NAS/Dropbox sync does not flip the other screen.
+            </p>
+            <button type="button" class="theme-toggle" id="theme-toggle-settings" aria-label="Switch to light theme" style="max-width:280px">
+              <svg class="icon-sun" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364 6.364l-1.414-1.414M7.05 7.05L5.636 5.636m12.728 0L16.95 7.05M7.05 16.95l-1.414 1.414M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+              <svg class="icon-moon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 14.5A8.5 8.5 0 1111.5 3 7 7 0 0021 14.5z"/></svg>
+              <span class="theme-label theme-label-to-light">Use light theme</span>
+              <span class="theme-label theme-label-to-dark">Use dark theme</span>
+            </button>
+          </div>
+
+          <div class="settings-section">
             <h3>Business Details</h3>
             <div class="form-grid">
               <div class="form-group">
@@ -906,19 +922,6 @@
                 <input type="number" id="biz-mileage-rate" value="0.70" min="0" step="0.01" inputmode="decimal" />
               </div>
             </div>
-          </div>
-
-          <div class="settings-section">
-            <h3>Appearance</h3>
-            <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.5">
-              Light or dark theme for this browser. Saved on this device so a NAS/Dropbox sync does not flip the other screen.
-            </p>
-            <button type="button" class="theme-toggle" id="theme-toggle-settings" aria-label="Switch to light theme" style="max-width:280px">
-              <svg class="icon-sun" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364 6.364l-1.414-1.414M7.05 7.05L5.636 5.636m12.728 0L16.95 7.05M7.05 16.95l-1.414 1.414M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-              <svg class="icon-moon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 14.5A8.5 8.5 0 1111.5 3 7 7 0 0021 14.5z"/></svg>
-              <span class="theme-label theme-label-to-light">Use light theme</span>
-              <span class="theme-label theme-label-to-dark">Use dark theme</span>
-            </button>
           </div>
 
           <div class="settings-section">
