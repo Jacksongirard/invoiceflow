@@ -472,8 +472,8 @@
               <input type="date" id="inv-due" />
             </div>
             <div class="form-group">
-              <label>Paid On</label>
-              <input type="date" id="inv-paid-on" />
+              <label>Paid On (YY-MM-DD)</label>
+              <input type="text" id="inv-paid-on" placeholder="26-09-14" maxlength="10" inputmode="numeric" />
             </div>
             <div class="form-group">
               <label>Client</label>
@@ -1210,6 +1210,17 @@
       return c + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
     function today() { return new Date().toISOString().slice(0, 10); }
+    // paidAt is stored and shown as YY-MM-DD (e.g. 26-09-14).
+    function toPaidAt(value) {
+      if (!value) return '';
+      const s = String(value).trim();
+      let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) return m[1].slice(-2) + '-' + m[2] + '-' + m[3];
+      m = s.match(/^(\d{2})-(\d{2})-(\d{2})$/);
+      if (m) return m[1] + '-' + m[2] + '-' + m[3];
+      return '';
+    }
+    function todayPaidAt() { return toPaidAt(today()); }
     function addDays(dateStr, days) {
       const d = new Date(dateStr); d.setDate(d.getDate() + days);
       return d.toISOString().slice(0, 10);
@@ -1255,7 +1266,7 @@
       if (!inv || typeof inv !== 'object') return inv;
       return {
         ...inv,
-        paidAt: inv.paidAt || inv.paidOn || '',
+        paidAt: toPaidAt(inv.paidAt || inv.paidOn || ''),
         items: (inv.items || []).map(it => ({
           ...it,
           taxable: typeof it.taxable === 'boolean' ? it.taxable : defaultTaxable(it.type)
@@ -1263,7 +1274,7 @@
       };
     }
     function paidOnDate(inv) {
-      return (inv && (inv.paidAt || inv.paidOn)) || '';
+      return toPaidAt((inv && (inv.paidAt || inv.paidOn)) || '');
     }
     function statusBadgeHTML(inv) {
       const st = getStatus(inv);
@@ -1900,7 +1911,7 @@
         const parts = collectInvoicePartsFromForm();
         const paid = Number($('inv-paid')?.value) || 0;
         if (paid <= 0 && parts.total > 0) $('inv-paid').value = parts.total.toFixed(2);
-        if ($('inv-paid-on') && !$('inv-paid-on').value) $('inv-paid-on').value = today();
+        if ($('inv-paid-on') && !$('inv-paid-on').value) $('inv-paid-on').value = todayPaidAt();
       }
       recalcTotals();
     }
@@ -1980,9 +1991,9 @@
       const status = $('inv-status').value;
       const parts = calcInvoiceParts({ items, taxRate, discount });
       const nowPaid = status === 'paid' || amountPaid >= parts.total - 0.01;
-      let paidAt = ($('inv-paid-on')?.value || '').trim();
+      let paidAt = toPaidAt($('inv-paid-on')?.value || '');
       if (nowPaid) {
-        if (!paidAt) paidAt = paidOnDate(prev) || today();
+        if (!paidAt) paidAt = paidOnDate(prev) || todayPaidAt();
       } else {
         paidAt = '';
       }
@@ -2005,6 +2016,7 @@
         createdAt: prev.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
+      delete inv.paidOn;
 
       if (existingIdx >= 0) {
         state.invoices[existingIdx] = inv;
