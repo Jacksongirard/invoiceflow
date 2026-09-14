@@ -279,6 +279,30 @@
     .taxable-label input[type="checkbox"] {
       width: auto; cursor: pointer; accent-color: var(--primary);
     }
+    .amount-hint {
+      display: block;
+      font-size: 10px;
+      font-weight: 400;
+      color: var(--text-muted);
+      margin-top: 2px;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+    .item-amount .amount-hint { font-family: var(--font); }
+    .markup-pct-wrap {
+      display: flex; align-items: center; gap: 6px;
+    }
+    .markup-pct-wrap span { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+    .parts-qty-placeholder { display: none; color: var(--text-muted); font-size: 12px; }
+    tr.is-parts-markup .item-qty,
+    tr.is-parts-markup .item-rate { display: none; }
+    tr.is-parts-markup .parts-qty-placeholder { display: inline; }
+    tr:not(.is-parts-markup) .markup-pct-wrap { display: none; }
+    tr.is-parts-markup .col-apply-markup,
+    tr.is-parts-markup .item-taxable-wrap { visibility: hidden; }
+    .items-table:not(.has-parts-markup) .col-markup { display: none; }
+    .preview-hint { font-size: 11px; color: #64748b; margin-top: 4px; }
+    .total-row.muted { color: var(--text-muted); font-size: 13px; }
     .print-label {
       font-size: 11px; color: #64748b; margin: 0 0 18px;
       letter-spacing: 0.01em;
@@ -498,7 +522,7 @@
           </div>
           <div id="inv-client-rates" style="margin:8px 0 4px;font-size:13px;color:var(--text-muted)"></div>
           <h3 style="margin:20px 0 12px;font-size:15px">Line Items</h3>
-          <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Select an <strong>Item</strong> type to auto-fill the rate from the selected client (or global defaults). Uncheck <strong>Taxable</strong> for lines that should not be taxed (for example mileage). <a href="#" onclick="navigate('lineitems');return false" style="color:var(--primary)">Manage types</a></p>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Select an <strong>Item</strong> type to auto-fill the rate from the selected client (or global defaults). Add <strong>Parts Sales</strong> and enter a percentage, then check <strong>Apply</strong> on the cost lines to mark up (for example Materials / Parts at cost). Unchecked lines stay pass-through reimbursement. <strong>Taxable</strong> uses each line’s billed amount, including markup. <a href="#" onclick="navigate('lineitems');return false" style="color:var(--primary)">Manage types</a></p>
           <table class="items-table">
             <thead>
               <tr>
@@ -506,6 +530,7 @@
                 <th>Description</th>
                 <th style="width:10%">Qty</th>
                 <th style="width:12%">Rate</th>
+                <th class="col-markup" style="width:11%">Markup</th>
                 <th style="width:12%">Taxable</th>
                 <th style="width:12%">Amount</th>
                 <th style="width:6%"></th>
@@ -520,6 +545,9 @@
           <div class="totals">
             <div class="totals-box">
               <div class="total-row"><span>Subtotal</span><span class="value" id="subtotal">$0.00</span></div>
+              <div class="total-row muted" id="markup-sub-row" style="display:none">
+                <span id="markup-sub-label">Parts markup (in lines)</span><span class="value" id="markup-subtotal">$0.00</span>
+              </div>
               <div class="total-row" id="taxable-sub-row" style="display:none">
                 <span>Taxable</span><span class="value" id="taxable-subtotal">$0.00</span>
               </div>
@@ -571,7 +599,7 @@
           <button class="btn btn-primary" onclick="openLineItemTypeModal()">Add Type</button>
         </div>
         <p style="font-size:13px;color:var(--text-muted);margin:-12px 0 20px;max-width:720px">
-          These types power the <strong>Item</strong> dropdown on New Invoice (Labor, Travel Time, Travel Expense, After Hours, Mileage, Tech Support, Parts Sales, Materials / Parts, Other Expense, Custom). Types already used on saved invoices are disabled rather than deleted, so old invoices keep their keys and labels.
+          These types power the <strong>Item</strong> dropdown on New Invoice (Labor, Travel Time, Travel Expense, After Hours, Mileage, Tech Support, Parts Sales, Materials / Parts, Other Expense, Custom). <strong>Parts Sales</strong> is a markup percentage: enter % on the invoice and check Apply on the cost lines it should mark up. Types already used on saved invoices are disabled rather than deleted, so old invoices keep their keys and labels.
         </p>
         <div class="card" style="padding:0;overflow:hidden">
           <div id="lineitem-types-list"></div>
@@ -1427,8 +1455,35 @@
       if (def) return def.label;
       return LEGACY_TYPE_LABELS[t] || t;
     }
-    function itemAmount(it) {
+    function isPartsSalesType(type) {
+      return type === 'parts';
+    }
+    function isLegacyPartsLine(it) {
+      return !!(it && isPartsSalesType(it.type) && typeof it.markupPct !== 'number' && (Number(it.qty) || Number(it.rate)));
+    }
+    function isMarkupControlLine(it) {
+      return !!(it && isPartsSalesType(it.type) && !isLegacyPartsLine(it) && typeof it.markupPct === 'number');
+    }
+    function invoiceMarkupPct(items) {
+      const ps = (items || []).find(isMarkupControlLine);
+      const pct = Number(ps && ps.markupPct);
+      return isFinite(pct) ? pct : 0;
+    }
+    function itemCost(it) {
+      if (isMarkupControlLine(it)) return 0;
       return (Number(it && it.qty) || 0) * (Number(it && it.rate) || 0);
+    }
+    function itemAmount(it, items) {
+      if (isMarkupControlLine(it)) return 0;
+      const cost = itemCost(it);
+      if (it && it.applyMarkup) {
+        const pct = invoiceMarkupPct(items || []);
+        if (pct) return cost * (1 + pct / 100);
+      }
+      return cost;
+    }
+    function itemMarkupExtra(it, items) {
+      return Math.max(0, itemAmount(it, items) - itemCost(it));
     }
     // Mileage / travel expense default off (often not taxed). Labor, parts, etc. default on.
     // Catalog taxableDefault wins when the type is managed. Per-line checkbox is source of truth after edit.
@@ -1443,23 +1498,32 @@
     }
     function calcInvoiceParts(inv) {
       const items = (inv && inv.items) || [];
-      const sub = items.reduce((s, it) => s + itemAmount(it), 0);
-      const taxableSub = items.reduce((s, it) => s + (isItemTaxable(it) ? itemAmount(it) : 0), 0);
+      const markupPct = invoiceMarkupPct(items);
+      const sub = items.reduce((s, it) => s + itemAmount(it, items), 0);
+      const costSub = items.reduce((s, it) => s + itemCost(it), 0);
+      const markupAmt = Math.max(0, sub - costSub);
+      const taxableSub = items.reduce((s, it) => s + (isItemTaxable(it) ? itemAmount(it, items) : 0), 0);
       const taxRate = Number(inv && inv.taxRate) || 0;
       const taxAmt = taxableSub * taxRate / 100;
       const disc = Number(inv && inv.discount) || 0;
       const total = Math.max(0, sub + taxAmt - disc);
-      return { sub, taxableSub, taxRate, taxAmt, disc, total };
+      return { sub, costSub, markupAmt, markupPct, taxableSub, taxRate, taxAmt, disc, total };
     }
     function migrateInvoice(inv) {
       if (!inv || typeof inv !== 'object') return inv;
       return {
         ...inv,
         paidAt: toPaidAt(inv.paidAt || inv.paidOn || ''),
-        items: (inv.items || []).map(it => ({
-          ...it,
-          taxable: typeof it.taxable === 'boolean' ? it.taxable : defaultTaxable(it.type)
-        }))
+        items: (inv.items || []).map(it => {
+          const next = {
+            ...it,
+            id: it.id || uid(),
+            taxable: typeof it.taxable === 'boolean' ? it.taxable : defaultTaxable(it.type),
+            applyMarkup: !!it.applyMarkup
+          };
+          if (typeof it.markupPct === 'number' && isFinite(it.markupPct)) next.markupPct = it.markupPct;
+          return next;
+        })
       };
     }
     function paidOnDate(inv) {
@@ -1533,9 +1597,20 @@
       if (descInput && !descInput.value.trim() && type && type !== 'custom') {
         descInput.placeholder = typeLabel(type) + '…';
       }
+      setPartsMarkupRowMode(tr, isPartsSalesType(type), true);
       // Suggest tax from client
       suggestTaxFromLines();
       recalcTotals();
+    }
+    function setPartsMarkupRowMode(tr, on, entering) {
+      tr.classList.toggle('is-parts-markup', !!on);
+      const pctInput = tr.querySelector('.item-markup-pct');
+      if (on && pctInput) {
+        const n = Number(pctInput.value);
+        if (entering && (!pctInput.value || !isFinite(n) || n === 0)) pctInput.value = 25;
+      }
+      const applyCb = tr.querySelector('.item-apply-markup');
+      if (on && applyCb) applyCb.checked = false;
     }
 
     function suggestTaxFromLines() {
@@ -2093,7 +2168,12 @@
       }
       const taxable = typeof item?.taxable === 'boolean' ? item.taxable : defaultTaxable(type);
       const typeOptions = lineItemTypeOptionsHtml(type);
+      const markupMode = isPartsSalesType(type) && !isLegacyPartsLine(item);
+      const markupPct = markupMode ? (typeof item?.markupPct === 'number' ? item.markupPct : 25) : '';
+      const applyMarkup = !markupMode && !!item?.applyMarkup;
       const tr = document.createElement('tr');
+      tr.dataset.lineId = item?.id || uid();
+      if (markupMode) tr.classList.add('is-parts-markup');
       tr.innerHTML = `
         <td>
           <select class="item-type" onchange="onLineTypeChange(this)" style="padding:8px 10px;font-size:13px">
@@ -2101,20 +2181,66 @@
           </select>
         </td>
         <td><input type="text" class="item-desc" placeholder="Description / notes" value="${esc(item?.desc || '')}" oninput="recalcTotals()" /></td>
-        <td><input type="number" class="item-qty" min="0" step="0.01" value="${item?.qty ?? 1}" oninput="recalcTotals()" /></td>
-        <td><input type="number" class="item-rate" min="0" step="0.01" value="${rate}" oninput="recalcTotals()" /></td>
         <td>
-          <label class="taxable-label" title="Include this line in sales tax">
+          <input type="number" class="item-qty" min="0" step="0.01" value="${item?.qty ?? 1}" oninput="recalcTotals()" />
+          <span class="parts-qty-placeholder">—</span>
+        </td>
+        <td>
+          <input type="number" class="item-rate" min="0" step="0.01" value="${rate}" oninput="recalcTotals()" />
+          <div class="markup-pct-wrap" title="Percent added to lines with Apply checked">
+            <input type="number" class="item-markup-pct" min="0" step="0.01" value="${markupPct === '' ? '' : markupPct}" oninput="recalcTotals()" />
+            <span>%</span>
+          </div>
+        </td>
+        <td class="col-markup col-apply-markup">
+          <label class="taxable-label" title="Bill this line at cost plus the Parts Sales percentage">
+            <input type="checkbox" class="item-apply-markup" ${applyMarkup ? 'checked' : ''} onchange="recalcTotals()" />
+            Apply
+          </label>
+        </td>
+        <td>
+          <label class="taxable-label item-taxable-wrap" title="Include this line's billed amount in sales tax">
             <input type="checkbox" class="item-taxable" ${taxable ? 'checked' : ''} onchange="recalcTotals()" />
             Taxable
           </label>
         </td>
         <td class="amount-cell item-amount">$0.00</td>
         <td style="text-align:center">
-          <button class="btn btn-sm btn-danger" onclick="this.closest('tr').remove();suggestTaxFromLines();recalcTotals()">✕</button>
+          <button class="btn btn-sm btn-danger" onclick="removeLineItemRow(this)">✕</button>
         </td>`;
       $('line-items').appendChild(tr);
       recalcTotals();
+    }
+    function removeLineItemRow(btn) {
+      const tr = btn && btn.closest('tr');
+      if (tr) tr.remove();
+      suggestTaxFromLines();
+      recalcTotals();
+    }
+    function syncPartsMarkupTable() {
+      const table = document.querySelector('#page-create .items-table');
+      const on = !!document.querySelector('#line-items tr.is-parts-markup');
+      if (table) table.classList.toggle('has-parts-markup', on);
+    }
+    function readLineItemRow(tr) {
+      const type = tr.querySelector('.item-type')?.value || 'custom';
+      const markupMode = tr.classList.contains('is-parts-markup');
+      const it = {
+        id: tr.dataset.lineId || '',
+        type,
+        desc: tr.querySelector('.item-desc')?.value?.trim() || '',
+        qty: Number(tr.querySelector('.item-qty')?.value) || 0,
+        rate: Number(tr.querySelector('.item-rate')?.value) || 0,
+        taxable: !!tr.querySelector('.item-taxable')?.checked,
+        applyMarkup: !markupMode && !!tr.querySelector('.item-apply-markup')?.checked
+      };
+      if (markupMode && isPartsSalesType(type)) {
+        it.markupPct = Number(tr.querySelector('.item-markup-pct')?.value) || 0;
+        it.qty = 0;
+        it.rate = 0;
+        it.applyMarkup = false;
+      }
+      return it;
     }
 
     function collectInvoicePartsFromForm() {
@@ -2137,43 +2263,67 @@
     }
 
     function recalcTotals() {
-      let sub = 0, taxableSub = 0;
-      document.querySelectorAll('#line-items tr').forEach(tr => {
-        const qty = Number(tr.querySelector('.item-qty')?.value) || 0;
-        const rate = Number(tr.querySelector('.item-rate')?.value) || 0;
-        const amt = qty * rate;
-        sub += amt;
-        if (tr.querySelector('.item-taxable')?.checked) taxableSub += amt;
+      syncPartsMarkupTable();
+      const rows = [...document.querySelectorAll('#line-items tr')];
+      const items = rows.map(tr => readLineItemRow(tr));
+      rows.forEach((tr, i) => {
+        const it = items[i];
         const cell = tr.querySelector('.item-amount');
-        if (cell) cell.textContent = money(amt);
+        if (!cell) return;
+        if (isMarkupControlLine(it) || (tr.classList.contains('is-parts-markup') && isPartsSalesType(it.type))) {
+          const extra = items.reduce((s, x) => s + itemMarkupExtra(x, items), 0);
+          const pct = invoiceMarkupPct(items);
+          cell.innerHTML = extra
+            ? `${money(extra)}<span class="amount-hint">${pct}% on selected lines</span>`
+            : `${money(0)}<span class="amount-hint">check Apply on lines</span>`;
+        } else {
+          const billed = itemAmount(it, items);
+          const cost = itemCost(it);
+          const pct = invoiceMarkupPct(items);
+          if (it.applyMarkup && pct) {
+            cell.innerHTML = `${money(billed)}<span class="amount-hint">cost ${money(cost)} + ${pct}%</span>`;
+          } else {
+            cell.textContent = money(billed);
+          }
+        }
       });
-      const taxRate = Number($('inv-tax').value) || 0;
-      const taxAmt = taxableSub * taxRate / 100;
-      const disc = Number($('inv-discount').value) || 0;
-      const total = Math.max(0, sub + taxAmt - disc);
-      const paid = Number($('inv-paid').value) || 0;
+      const { sub, taxableSub, taxAmt, total, markupAmt, markupPct } = calcInvoiceParts({
+        items,
+        taxRate: Number($('inv-tax')?.value) || 0,
+        discount: Number($('inv-discount')?.value) || 0
+      });
+      const paid = Number($('inv-paid')?.value) || 0;
       const bal = Math.max(0, total - paid);
-      $('subtotal').textContent = money(sub);
+      if ($('subtotal')) $('subtotal').textContent = money(sub);
+      const markupRow = $('markup-sub-row');
+      if (markupRow) {
+        markupRow.style.display = markupAmt > 0.009 ? 'flex' : 'none';
+        if ($('markup-sub-label')) {
+          $('markup-sub-label').textContent = markupPct
+            ? `Parts markup ${markupPct}% (in lines)`
+            : 'Parts markup (in lines)';
+        }
+        if ($('markup-subtotal')) $('markup-subtotal').textContent = money(markupAmt);
+      }
       const taxableRow = $('taxable-sub-row');
       if (taxableRow) {
         const mixed = Math.abs(taxableSub - sub) > 0.009;
         taxableRow.style.display = mixed ? 'flex' : 'none';
         if ($('taxable-subtotal')) $('taxable-subtotal').textContent = money(taxableSub);
       }
-      $('tax-amount').textContent = money(taxAmt);
-      $('grand-total').textContent = money(total);
-      $('balance-due').textContent = money(bal);
+      if ($('tax-amount')) $('tax-amount').textContent = money(taxAmt);
+      if ($('grand-total')) $('grand-total').textContent = money(total);
+      if ($('balance-due')) $('balance-due').textContent = money(bal);
     }
 
     function collectItems() {
       const items = [];
       document.querySelectorAll('#line-items tr').forEach(tr => {
-        const type = tr.querySelector('.item-type')?.value || 'custom';
-        const desc = tr.querySelector('.item-desc')?.value?.trim();
-        const qty = Number(tr.querySelector('.item-qty')?.value) || 0;
-        const rate = Number(tr.querySelector('.item-rate')?.value) || 0;
-        const taxable = !!tr.querySelector('.item-taxable')?.checked;
-        if (desc || qty || rate) items.push({ type, desc: desc || typeLabel(type), qty, rate, taxable });
+        const it = readLineItemRow(tr);
+        if (it.desc || it.qty || it.rate || typeof it.markupPct === 'number') {
+          if (!it.desc) it.desc = typeLabel(it.type);
+          items.push(it);
+        }
       });
       return items;
     }
@@ -2372,6 +2522,7 @@
     // ---------- Line item types catalog ----------
     function rateSourceLabel(t) {
       if (!t) return '—';
+      if (t.key === 'parts') return 'Markup % on invoice';
       if (t.rateSource === 'labor') return 'Labor rate';
       if (t.rateSource === 'travel') return 'Travel rate';
       if (t.rateSource === 'afterhours') return 'After-hours rate';
@@ -2585,12 +2736,13 @@
     function buildPreviewHTML(inv) {
       const b = state.business;
       const parts = calcInvoiceParts(inv);
-      const { sub, taxableSub, taxAmt, total } = parts;
+      const { sub, taxableSub, taxAmt, total, markupAmt, markupPct } = parts;
       const paid = Number(inv.amountPaid)||0;
       const bal = Math.max(0, total - paid);
       const st = getStatus(inv);
       const paidDate = paidOnDate(inv);
       const mixedTax = Math.abs(taxableSub - sub) > 0.009;
+      const items = inv.items || [];
       return `
         <div class="preview-header">
           <div>
@@ -2628,20 +2780,39 @@
             <th style="text-align:right">Amount</th>
           </tr></thead>
           <tbody>
-            ${(inv.items||[]).map(it => `
-              <tr>
+            ${items.map(it => {
+              if (isMarkupControlLine(it)) {
+                const extra = items.reduce((s, x) => s + itemMarkupExtra(x, items), 0);
+                const n = items.filter(x => x.applyMarkup).length;
+                return `<tr>
+                  <td style="white-space:nowrap;font-weight:600;color:#334155">${esc(typeLabel(it.type || 'custom'))}</td>
+                  <td>${esc(it.desc || typeLabel(it.type))}<div class="preview-hint">${markupPct}% markup on ${n} selected line${n===1?'':'s'} — included in billed amounts</div></td>
+                  <td style="text-align:right">—</td>
+                  <td style="text-align:right">${markupPct}%</td>
+                  <td style="text-align:center">—</td>
+                  <td style="text-align:right">${money(extra)}</td>
+                </tr>`;
+              }
+              const billed = itemAmount(it, items);
+              const cost = itemCost(it);
+              const hint = it.applyMarkup && markupPct
+                ? `<div class="preview-hint">cost ${money(cost)} + ${markupPct}% parts sales</div>`
+                : '';
+              return `<tr>
                 <td style="white-space:nowrap;font-weight:600;color:#334155">${esc(typeLabel(it.type || 'custom'))}</td>
-                <td>${esc(it.desc)}</td>
+                <td>${esc(it.desc)}${hint}</td>
                 <td style="text-align:right">${it.qty}</td>
                 <td style="text-align:right">${money(it.rate)}</td>
                 <td style="text-align:center">${isItemTaxable(it) ? 'Yes' : 'No'}</td>
-                <td style="text-align:right">${money(itemAmount(it))}</td>
-              </tr>`).join('')}
+                <td style="text-align:right">${money(billed)}</td>
+              </tr>`;
+            }).join('')}
           </tbody>
         </table>
         <div class="preview-totals">
           <table>
             <tr><td>Subtotal</td><td style="text-align:right">${money(sub)}</td></tr>
+            ${markupAmt > 0.009 ? `<tr><td style="color:#64748b">Parts markup ${markupPct}% (in lines)</td><td style="text-align:right;color:#64748b">${money(markupAmt)}</td></tr>` : ''}
             ${mixedTax ? `<tr><td>Taxable</td><td style="text-align:right">${money(taxableSub)}</td></tr>` : ''}
             ${inv.taxRate ? `<tr><td>Tax (${inv.taxRate}%)</td><td style="text-align:right">${money(taxAmt)}</td></tr>` : ''}
             ${inv.discount ? `<tr><td>Discount</td><td style="text-align:right">-${money(inv.discount)}</td></tr>` : ''}
