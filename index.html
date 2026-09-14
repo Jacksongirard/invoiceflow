@@ -284,6 +284,8 @@
       letter-spacing: 0.01em;
     }
     .badge-paid-date { text-transform: none; letter-spacing: 0; }
+    .badge-disabled { background: rgba(139,156,179,0.2); color: var(--text-muted); }
+    .row-disabled td { opacity: 0.6; }
     .rate-pills { display: flex; flex-wrap: wrap; gap: 6px; font-size: 11px; align-items: center; }
     .rate-pill { background: var(--surface2); border: 1px solid var(--border); padding: 2px 8px; border-radius: 12px; color: var(--text-muted); }
     .rate-pill strong { color: var(--text); }
@@ -362,6 +364,10 @@
       <button class="nav-btn" data-page="clients">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
         Clients
+      </button>
+      <button class="nav-btn" data-page="lineitems">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+        Line Items
       </button>
       <button class="nav-btn" data-page="settings">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
@@ -492,7 +498,7 @@
           </div>
           <div id="inv-client-rates" style="margin:8px 0 4px;font-size:13px;color:var(--text-muted)"></div>
           <h3 style="margin:20px 0 12px;font-size:15px">Line Items</h3>
-          <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Select an <strong>Item</strong> type to auto-fill the rate from the selected client (or global defaults). Uncheck <strong>Taxable</strong> for lines that should not be taxed (for example mileage).</p>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Select an <strong>Item</strong> type to auto-fill the rate from the selected client (or global defaults). Uncheck <strong>Taxable</strong> for lines that should not be taxed (for example mileage). <a href="#" onclick="navigate('lineitems');return false" style="color:var(--primary)">Manage types</a></p>
           <table class="items-table">
             <thead>
               <tr>
@@ -552,6 +558,23 @@
         </div>
         <div class="card" style="padding:0;overflow:hidden">
           <div id="clients-list"></div>
+        </div>
+      </div>
+
+      <!-- ==================== LINE ITEMS ==================== -->
+      <div id="page-lineitems" class="page hidden">
+        <div class="page-header">
+          <div>
+            <h2>Line Items</h2>
+            <p>Manage the Item types used on invoices</p>
+          </div>
+          <button class="btn btn-primary" onclick="openLineItemTypeModal()">Add Type</button>
+        </div>
+        <p style="font-size:13px;color:var(--text-muted);margin:-12px 0 20px;max-width:720px">
+          These types power the <strong>Item</strong> dropdown on New Invoice (Labor, Travel Time, Travel Expense, After Hours, Mileage, Tech Support, Parts Sales, Materials / Parts, Other Expense, Custom). Types already used on saved invoices are disabled rather than deleted, so old invoices keep their keys and labels.
+        </p>
+        <div class="card" style="padding:0;overflow:hidden">
+          <div id="lineitem-types-list"></div>
         </div>
       </div>
 
@@ -637,38 +660,12 @@
           </div>
 
           <div class="settings-section">
-            <h3>Multi-Device Sync</h3>
+            <h3>Manual Backup</h3>
             <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.5">
-              Your data lives in this browser by default. To see the <strong>same invoices &amp; clients on every device</strong>,
-              either run InvoiceFlow on a NAS (open <code>http://NAS-IP:8765</code>) or link a single JSON file inside
-              a synced folder (Dropbox, a NAS share, iCloud Drive, OneDrive, or Google Drive).
-              Every save writes to that file; other devices load from it.
+              Export a JSON copy of invoices, clients, and line item types, or import a backup on this browser.
+              NAS Docker already keeps shared data in <code>invoiceflow-data.json</code>.
             </p>
-            <div id="sync-status" class="card" style="padding:14px 16px;margin-bottom:14px;background:var(--surface2)">
-              <div style="font-size:13px"><strong>Status:</strong> <span id="sync-status-text">Not linked — data is local only</span></div>
-              <div style="font-size:12px;color:var(--text-muted);margin-top:4px" id="sync-status-detail"></div>
-            </div>
-            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
-              <button class="btn btn-primary" onclick="linkExistingSyncFile()">Link Existing Sync File</button>
-              <button class="btn btn-primary" onclick="createSyncFile()">Create New Sync File</button>
-              <button class="btn btn-secondary" onclick="pullFromSyncFile()">Load from Sync File</button>
-              <button class="btn btn-secondary" onclick="pushToSyncFile()">Save to Sync File Now</button>
-              <button class="btn btn-secondary" onclick="unlinkSyncFile()">Unlink</button>
-            </div>
-            <p style="font-size:12px;color:var(--text-muted);margin-bottom:20px;line-height:1.45">
-              <strong>NAS:</strong> copy this folder to the NAS and follow <code>docs/NAS.md</code>
-              (Docker or <em>Run InvoiceFlow NAS</em>). Then open <code>http://YOUR-NAS-IP:8765</code> —
-              sync is automatic, no file picker.
-              <br><br>
-              <strong>Desktop file (once per computer):</strong> Prefer <strong>Chrome or Edge</strong>.
-              Put <code>invoiceflow-data.json</code> in Dropbox or a NAS share
-              (or create one with <em>Create New Sync File</em>).
-              Then on each computer click <em>Link Existing Sync File</em> and pick that same file.
-              Click the button once — the file window must open immediately from that click (browsers block it after pop-ups).
-              On Safari without the NAS/server, use Export / Import instead.
-            </p>
-            <h3 style="margin-top:8px">Manual Backup</h3>
-            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px">
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
               <button class="btn btn-secondary" onclick="exportData()">Export JSON Backup</button>
               <label class="btn btn-secondary" style="cursor:pointer">
                 Import JSON Backup
@@ -676,7 +673,7 @@
               </label>
               <button class="btn btn-secondary" onclick="copyDataToClipboard()">Copy Data to Clipboard</button>
               <button class="btn btn-secondary" onclick="pasteDataFromClipboard()">Paste Data from Clipboard</button>
-              <button class="btn btn-danger" onclick="if(confirm('Delete ALL data on THIS browser? Sync file is not deleted.')) clearAllData()">Clear Local Data</button>
+              <button class="btn btn-danger" onclick="if(confirm('Delete ALL data on THIS browser? The NAS data file is not deleted.')) clearAllData()">Clear Local Data</button>
             </div>
           </div>
         </div>
@@ -744,6 +741,73 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeClientModal()">Cancel</button>
         <button class="btn btn-primary" onclick="saveClient()">Save Client</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Line Item Type Modal -->
+  <div id="lineitem-type-modal" class="modal-overlay hidden">
+    <div class="modal" style="max-width:560px">
+      <div class="modal-header">
+        <h3 id="lineitem-type-modal-title">Add Line Item Type</h3>
+        <button class="btn btn-icon btn-secondary" onclick="closeLineItemTypeModal()">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid" style="margin-bottom:12px">
+          <div class="form-group">
+            <label>Name *</label>
+            <input type="text" id="lit-label" placeholder="e.g. Emergency Call" />
+          </div>
+          <div class="form-group">
+            <label>Key / ID</label>
+            <input type="text" id="lit-key" placeholder="auto from name" />
+            <span id="lit-key-hint" style="font-size:11px;color:var(--text-muted)">Stored on invoices. Leave blank to generate from the name.</span>
+          </div>
+          <div class="form-group">
+            <label>Unit</label>
+            <select id="lit-unit">
+              <option value="">Qty (no unit)</option>
+              <option value="hr">Hours (hr)</option>
+              <option value="mi">Miles (mi)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Rate source</label>
+            <select id="lit-rate-source" onchange="onLitRateSourceChange()">
+              <option value="manual">Enter on invoice (manual)</option>
+              <option value="labor">Use Labor rate</option>
+              <option value="travel">Use Travel rate</option>
+              <option value="afterhours">Use After Hours rate</option>
+              <option value="mileage">Use Mileage rate</option>
+              <option value="fixed">Fixed default rate</option>
+            </select>
+          </div>
+          <div class="form-group" id="lit-default-rate-wrap" style="display:none">
+            <label>Default rate</label>
+            <input type="number" id="lit-default-rate" min="0" step="0.01" value="0" />
+          </div>
+          <div class="form-group">
+            <label>Tax group</label>
+            <select id="lit-tax-group">
+              <option value="none">None</option>
+              <option value="labor">Labor tax</option>
+              <option value="parts">Parts tax</option>
+            </select>
+          </div>
+          <div class="form-group full">
+            <label class="taxable-label" style="font-size:13px">
+              <input type="checkbox" id="lit-taxable" checked />
+              Taxable by default
+            </label>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted)">Tax group suggests Labor vs Parts tax % from the client. Taxable by default sets the invoice checkbox when this type is selected.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeLineItemTypeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveLineItemType()">Save Type</button>
       </div>
     </div>
   </div>
@@ -837,12 +901,128 @@
       clients: [],
       invoices: [],
       timeEntries: [],
+      lineItemTypes: [],
       nextInvNum: 1,
       editingId: null,
       editingClientId: null,
       editingTimeId: null,
+      editingLineItemKey: null,
       selectedTimeIds: new Set()
     };
+
+    const AUTO_RATE_SOURCES = ['labor', 'travel', 'afterhours', 'mileage'];
+    // Exact ITEM dropdown labels from the live New Invoice form.
+    const LEGACY_TYPE_LABELS = {
+      labor: 'Labor',
+      travel: 'Travel Time',
+      travelexpense: 'Travel Expense',
+      afterhours: 'After Hours',
+      mileage: 'Mileage',
+      techsupport: 'Tech Support',
+      parts: 'Parts Sales',
+      materials: 'Materials / Parts',
+      other: 'Other Expense',
+      custom: 'Custom (manual rate)'
+    };
+
+    function defaultLineItemTypes() {
+      // Seed matches the live ITEM dropdown, in the same order.
+      return [
+        { key: 'labor', label: 'Labor', unit: 'hr', rateSource: 'labor', defaultRate: 0, taxGroup: 'labor', taxableDefault: true, enabled: true, builtin: true },
+        { key: 'travel', label: 'Travel Time', unit: 'hr', rateSource: 'travel', defaultRate: 0, taxGroup: 'labor', taxableDefault: true, enabled: true, builtin: true },
+        { key: 'travelexpense', label: 'Travel Expense', unit: '', rateSource: 'manual', defaultRate: 0, taxGroup: 'none', taxableDefault: false, enabled: true, builtin: true },
+        { key: 'afterhours', label: 'After Hours', unit: 'hr', rateSource: 'afterhours', defaultRate: 0, taxGroup: 'labor', taxableDefault: true, enabled: true, builtin: true },
+        { key: 'mileage', label: 'Mileage', unit: 'mi', rateSource: 'mileage', defaultRate: 0, taxGroup: 'none', taxableDefault: false, enabled: true, builtin: true },
+        { key: 'techsupport', label: 'Tech Support', unit: 'hr', rateSource: 'labor', defaultRate: 0, taxGroup: 'labor', taxableDefault: true, enabled: true, builtin: true },
+        { key: 'parts', label: 'Parts Sales', unit: '', rateSource: 'manual', defaultRate: 0, taxGroup: 'parts', taxableDefault: true, enabled: true, builtin: true },
+        { key: 'materials', label: 'Materials / Parts', unit: '', rateSource: 'manual', defaultRate: 0, taxGroup: 'parts', taxableDefault: true, enabled: true, builtin: true },
+        { key: 'other', label: 'Other Expense', unit: '', rateSource: 'manual', defaultRate: 0, taxGroup: 'none', taxableDefault: true, enabled: true, builtin: true },
+        { key: 'custom', label: 'Custom (manual rate)', unit: '', rateSource: 'manual', defaultRate: 0, taxGroup: 'none', taxableDefault: true, enabled: true, builtin: true }
+      ];
+    }
+    function sanitizeLineItemKey(raw) {
+      return String(raw || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '').slice(0, 40);
+    }
+    function uniqueLineItemKey(base, ignoreKey) {
+      let key = sanitizeLineItemKey(base);
+      if (!key) key = 'type';
+      const existing = new Set((state.lineItemTypes || []).map(t => t.key).filter(k => k !== ignoreKey));
+      if (!existing.has(key)) return key;
+      let i = 2;
+      while (existing.has(key + i)) i++;
+      return key + i;
+    }
+    function normalizeLineItemType(t) {
+      if (!t || typeof t !== 'object') return null;
+      const key = sanitizeLineItemKey(t.key) || sanitizeLineItemKey(t.label);
+      if (!key) return null;
+      const rateSource = AUTO_RATE_SOURCES.concat(['fixed', 'manual']).includes(t.rateSource) ? t.rateSource : 'manual';
+      let taxGroup = t.taxGroup;
+      if (!['labor', 'parts', 'none'].includes(taxGroup)) {
+        taxGroup = ['labor', 'travel', 'afterhours', 'techsupport'].includes(key) ? 'labor'
+          : (['materials', 'parts'].includes(key) ? 'parts' : 'none');
+      }
+      let taxableDefault = t.taxableDefault;
+      if (typeof taxableDefault !== 'boolean') taxableDefault = !['mileage', 'travelexpense'].includes(key);
+      const unit = t.unit == null ? (key === 'mileage' ? 'mi' : (['labor', 'travel', 'afterhours', 'techsupport'].includes(key) ? 'hr' : '')) : String(t.unit);
+      return {
+        key,
+        label: String(t.label || LEGACY_TYPE_LABELS[key] || key),
+        unit,
+        rateSource,
+        defaultRate: Number(t.defaultRate) || 0,
+        taxGroup,
+        taxableDefault,
+        enabled: t.enabled !== false,
+        builtin: !!t.builtin
+      };
+    }
+    function normalizeLineItemCatalog(list) {
+      if (!Array.isArray(list) || !list.length) return defaultLineItemTypes();
+      const out = [];
+      const seen = new Set();
+      list.forEach(raw => {
+        const t = normalizeLineItemType(raw);
+        if (!t || seen.has(t.key)) return;
+        seen.add(t.key);
+        out.push(t);
+      });
+      return out.length ? out : defaultLineItemTypes();
+    }
+    function getLineItemType(key) {
+      return (state.lineItemTypes || []).find(t => t.key === key) || null;
+    }
+    function firstEnabledLineItemKey() {
+      const t = (state.lineItemTypes || []).find(x => x.enabled !== false);
+      return t ? t.key : 'labor';
+    }
+    function lineItemRateSource(type) {
+      const def = getLineItemType(type);
+      if (def) return def.rateSource;
+      if (type === 'techsupport') return 'labor';
+      if (AUTO_RATE_SOURCES.includes(type)) return type;
+      return 'manual';
+    }
+    function usesAutoFilledRate(type) {
+      const src = lineItemRateSource(type);
+      return AUTO_RATE_SOURCES.includes(src) || src === 'fixed';
+    }
+    function lineItemUnit(type) {
+      const def = getLineItemType(type);
+      if (def) return def.unit || '';
+      if (type === 'mileage') return 'mi';
+      if (['labor', 'travel', 'afterhours', 'techsupport'].includes(type)) return 'hr';
+      return '';
+    }
+    function lineItemTypeUsage(key) {
+      let invoices = 0, lines = 0, time = 0;
+      (state.invoices || []).forEach(inv => {
+        const n = (inv.items || []).filter(it => it.type === key).length;
+        if (n) { invoices++; lines += n; }
+      });
+      (state.timeEntries || []).forEach(e => { if (e.type === key) time++; });
+      return { invoices, lines, time };
+    }
 
     // ---------- Persistence + Multi-device sync ----------
     let syncFileHandle = null;
@@ -895,6 +1075,7 @@
         clients: state.clients,
         invoices: state.invoices,
         timeEntries: state.timeEntries || [],
+        lineItemTypes: state.lineItemTypes || defaultLineItemTypes(),
         nextInvNum: state.nextInvNum,
         updatedAt: new Date().toISOString(),
         app: 'invoiceflow',
@@ -908,6 +1089,7 @@
         laborRate: null, travelRate: null, afterHoursRate: null,
         taxRateLabor: null, taxRateParts: null, mileageRate: null, ...c
       }));
+      state.lineItemTypes = normalizeLineItemCatalog(data.lineItemTypes);
       state.invoices = (data.invoices || []).map(migrateInvoice);
       state.timeEntries = data.timeEntries || [];
       state.nextInvNum = data.nextInvNum || 1;
@@ -930,6 +1112,9 @@
           || localStorage.getItem('invoiceflow_data_v1');
         if (raw) applyData(JSON.parse(raw), { silent: true });
       } catch (e) { console.error(e); }
+      if (!state.lineItemTypes || !state.lineItemTypes.length) {
+        state.lineItemTypes = defaultLineItemTypes();
+      }
       updateLastSaved();
       updateSyncStatusUI();
     }
@@ -1238,14 +1423,18 @@
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
     function typeLabel(t) {
-      return { labor:'Labor', travel:'Travel Time', travelexpense:'Travel Expense', afterhours:'After Hours', mileage:'Mileage', materials:'Materials', parts:'Parts Sales', techsupport:'Tech Support', other:'Other', custom:'Custom' }[t] || t;
+      const def = getLineItemType(t);
+      if (def) return def.label;
+      return LEGACY_TYPE_LABELS[t] || t;
     }
     function itemAmount(it) {
       return (Number(it && it.qty) || 0) * (Number(it && it.rate) || 0);
     }
     // Mileage / travel expense default off (often not taxed). Labor, parts, etc. default on.
-    // The per-line checkbox is the source of truth after the user edits it.
+    // Catalog taxableDefault wins when the type is managed. Per-line checkbox is source of truth after edit.
     function defaultTaxable(type) {
+      const def = getLineItemType(type);
+      if (def) return def.taxableDefault !== false;
       return !['mileage', 'travelexpense'].includes(type || '');
     }
     function isItemTaxable(it) {
@@ -1297,11 +1486,15 @@
 
     function effectiveRate(client, type) {
       const b = state.business;
-      if (type === 'techsupport') type = 'labor';
-      if (type === 'labor') return (client && client.laborRate != null) ? client.laborRate : (b.laborRate || 75);
-      if (type === 'travel') return (client && client.travelRate != null) ? client.travelRate : (b.travelRate || 50);
-      if (type === 'afterhours') return (client && client.afterHoursRate != null) ? client.afterHoursRate : (b.afterHoursRate || 112.50);
-      if (type === 'mileage') return (client && client.mileageRate != null) ? client.mileageRate : (b.mileageRate || 0.70);
+      const src = lineItemRateSource(type);
+      if (src === 'labor') return (client && client.laborRate != null) ? client.laborRate : (b.laborRate || 75);
+      if (src === 'travel') return (client && client.travelRate != null) ? client.travelRate : (b.travelRate || 50);
+      if (src === 'afterhours') return (client && client.afterHoursRate != null) ? client.afterHoursRate : (b.afterHoursRate || 112.50);
+      if (src === 'mileage') return (client && client.mileageRate != null) ? client.mileageRate : (b.mileageRate || 0.70);
+      if (src === 'fixed') {
+        const def = getLineItemType(type);
+        return Number(def && def.defaultRate) || 0;
+      }
       return 0; // materials / other / custom — user enters
     }
 
@@ -1330,11 +1523,10 @@
       const descInput = tr.querySelector('.item-desc');
       const taxCb = tr.querySelector('.item-taxable');
       const client = getSelectedInvoiceClient();
-      if (type && !['custom','materials','other','travelexpense','parts'].includes(type)) {
+      if (usesAutoFilledRate(type)) {
         rateInput.value = effectiveRate(client, type);
-      } else if (type === 'materials' || type === 'other') {
-        // leave rate as-is or 0 if empty
-        if (!rateInput.value || rateInput.value === '0') rateInput.value = 0;
+      } else if (!rateInput.value || rateInput.value === '0') {
+        rateInput.value = 0;
       }
       if (taxCb) taxCb.checked = defaultTaxable(type);
       // Suggest description if empty
@@ -1352,8 +1544,10 @@
       let hasLabor = false, hasParts = false;
       document.querySelectorAll('#line-items tr').forEach(tr => {
         const t = tr.querySelector('.item-type')?.value;
-        if (['labor','travel','afterhours'].includes(t)) hasLabor = true;
-        if (t === 'materials' || t === 'parts') hasParts = true;
+        const def = getLineItemType(t);
+        const group = def ? def.taxGroup : (['labor','travel','afterhours'].includes(t) ? 'labor' : ((t === 'materials' || t === 'parts') ? 'parts' : 'none'));
+        if (group === 'labor') hasLabor = true;
+        if (group === 'parts') hasParts = true;
       });
       if (hasLabor && client.taxRateLabor != null) {
         $('inv-tax').value = client.taxRateLabor;
@@ -1368,7 +1562,7 @@
         const typeSel = tr.querySelector('.item-type');
         if (!typeSel) return;
         const type = typeSel.value;
-        if (type && !['custom','materials','other','travelexpense','parts'].includes(type)) {
+        if (usesAutoFilledRate(type)) {
           const rateInput = tr.querySelector('.item-rate');
           if (rateInput) rateInput.value = effectiveRate(client, type);
         }
@@ -1388,9 +1582,10 @@
       if (btn) btn.classList.add('active');
       $('sidebar').classList.remove('open');
       if (page === 'dashboard') renderDashboard();
-            if (page === 'invoices') renderInvoices();
+      if (page === 'invoices') renderInvoices();
       if (page === 'create') initCreateForm();
       if (page === 'clients') renderClients();
+      if (page === 'lineitems') renderLineItemTypes();
       if (page === 'settings') { loadSettingsForm(); updateSyncStatusUI(); }
     }
     document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -1577,7 +1772,7 @@
                   <td><span class="badge badge-${e.type}">${typeLabel(e.type)}</span></td>
                   <td>${esc(e.clientName||'—')}</td>
                   <td>${esc(e.desc)}</td>
-                  <td class="mono">${e.qty} ${e.type==='mileage'?'mi':(e.type==='labor'||e.type==='travel'?'hr':'')}</td>
+                  <td class="mono">${e.qty} ${esc(lineItemUnit(e.type))}</td>
                   <td class="mono">${money(calcEntryAmount(e))}</td>
                 </tr>`).join('')}
             </tbody>
@@ -1638,7 +1833,7 @@
         }
         $('line-items').innerHTML = '';
         entries.forEach(e => {
-          const unit = e.type === 'mileage' ? 'mi' : (['labor','travel','afterhours'].includes(e.type) ? 'hr' : '');
+          const unit = lineItemUnit(e.type || 'labor');
           const desc = e.desc + (e.date ? ' ('+e.date+')' : '') + (unit ? ' ['+e.qty+' '+unit+']' : '');
           addLineItem({ type: e.type || 'labor', desc, qty: e.qty, rate: e.rate });
         });
@@ -1652,11 +1847,28 @@
     // ---------- Full Time Log page ----------
     function renderTimeLog() { /* removed Time Log page */ }
 
+    function fillCatalogTypeSelect(sel, selectedKey, { includeDisabled } = {}) {
+      if (!sel) return;
+      const types = state.lineItemTypes || [];
+      const opts = [];
+      const seen = new Set();
+      types.forEach(t => {
+        if (t.enabled === false && !includeDisabled && t.key !== selectedKey) return;
+        seen.add(t.key);
+        opts.push({ key: t.key, label: t.label + (t.enabled === false ? ' (disabled)' : '') });
+      });
+      if (selectedKey && !seen.has(selectedKey)) {
+        opts.push({ key: selectedKey, label: typeLabel(selectedKey) + ' (removed)' });
+      }
+      sel.innerHTML = opts.map(o => `<option value="${esc(o.key)}" ${selectedKey===o.key?'selected':''}>${esc(o.label)}</option>`).join('');
+    }
+
     function editTimeEntry(id) {
       const e = state.timeEntries.find(x => x.id === id);
       if (!e || e.billed) return;
       state.editingTimeId = id;
       $('te-date').value = e.date || today();
+      fillCatalogTypeSelect($('te-type'), e.type, { includeDisabled: true });
       $('te-type').value = e.type;
       $('te-client').value = e.clientName || '';
       $('te-desc').value = e.desc || '';
@@ -1853,26 +2065,34 @@
       }
     }
 
+    function lineItemTypeOptionsHtml(selectedKey) {
+      const types = state.lineItemTypes || [];
+      const opts = [];
+      const seen = new Set();
+      types.forEach(t => {
+        if (t.enabled === false && t.key !== selectedKey) return;
+        seen.add(t.key);
+        opts.push({ key: t.key, label: t.label + (t.enabled === false ? ' (disabled)' : '') });
+      });
+      if (selectedKey && !seen.has(selectedKey)) {
+        opts.push({ key: selectedKey, label: typeLabel(selectedKey) + ' (removed)' });
+      }
+      if (!opts.length) {
+        const fallback = selectedKey || firstEnabledLineItemKey();
+        opts.push({ key: fallback, label: typeLabel(fallback) });
+      }
+      return opts.map(o => `<option value="${esc(o.key)}" ${selectedKey===o.key?'selected':''}>${esc(o.label)}</option>`).join('');
+    }
+
     function addLineItem(item = null) {
       const client = getSelectedInvoiceClient();
-      const type = item?.type || 'labor';
+      const type = item?.type || firstEnabledLineItemKey();
       let rate = item?.rate;
       if (rate == null || rate === undefined) {
-        rate = ['materials','other','custom','travelexpense','parts'].includes(type) ? (item?.rate ?? 0) : effectiveRate(client, type);
+        rate = usesAutoFilledRate(type) ? effectiveRate(client, type) : (item?.rate ?? 0);
       }
       const taxable = typeof item?.taxable === 'boolean' ? item.taxable : defaultTaxable(type);
-      const typeOptions = [
-        ['labor','Labor'],
-        ['travel','Travel Time'],
-        ['travelexpense','Travel Expense'],
-        ['afterhours','After Hours'],
-        ['mileage','Mileage'],
-        ['techsupport','Tech Support'],
-        ['parts','Parts Sales'],
-        ['materials','Materials / Parts'],
-        ['other','Other Expense'],
-        ['custom','Custom (manual rate)']
-      ].map(([v,l]) => `<option value="${v}" ${type===v?'selected':''}>${l}</option>`).join('');
+      const typeOptions = lineItemTypeOptionsHtml(type);
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>
@@ -2147,6 +2367,179 @@
       saveState();
       renderClients();
       toast('Client deleted');
+    }
+
+    // ---------- Line item types catalog ----------
+    function rateSourceLabel(t) {
+      if (!t) return '—';
+      if (t.rateSource === 'labor') return 'Labor rate';
+      if (t.rateSource === 'travel') return 'Travel rate';
+      if (t.rateSource === 'afterhours') return 'After-hours rate';
+      if (t.rateSource === 'mileage') return 'Mileage rate';
+      if (t.rateSource === 'fixed') return (state.business.currency || '$') + Number(t.defaultRate || 0).toFixed(2) + ' default';
+      return 'Entered on invoice';
+    }
+    function unitDisplay(unit) {
+      if (unit === 'hr') return 'hr';
+      if (unit === 'mi') return 'mi';
+      return unit || 'qty';
+    }
+    function taxGroupLabel(g) {
+      if (g === 'labor') return 'Labor';
+      if (g === 'parts') return 'Parts';
+      return 'None';
+    }
+    function renderLineItemTypes() {
+      const el = $('lineitem-types-list');
+      if (!el) return;
+      const types = state.lineItemTypes || [];
+      if (!types.length) {
+        el.innerHTML = `<div class="empty"><h3>No line item types</h3><p>Add a type to populate the invoice Item dropdown</p></div>`;
+        return;
+      }
+      el.innerHTML = `<table class="invoice-table">
+        <thead><tr>
+          <th>Name</th>
+          <th>Key</th>
+          <th>Unit</th>
+          <th>Rate</th>
+          <th>Tax group</th>
+          <th>Taxable</th>
+          <th>Status</th>
+          <th style="width:160px">Actions</th>
+        </tr></thead>
+        <tbody>
+          ${types.map(t => {
+            const used = lineItemTypeUsage(t.key);
+            const usedHint = used.invoices || used.time
+              ? ` title="${used.lines} line${used.lines!==1?'s':''} on ${used.invoices} invoice${used.invoices!==1?'s':''}${used.time ? ', '+used.time+' time entries' : ''}"`
+              : '';
+            return `<tr class="${t.enabled === false ? 'row-disabled' : ''}"${usedHint}>
+              <td><strong>${esc(t.label)}</strong></td>
+              <td class="mono">${esc(t.key)}</td>
+              <td>${esc(unitDisplay(t.unit))}</td>
+              <td>${esc(rateSourceLabel(t))}</td>
+              <td>${esc(taxGroupLabel(t.taxGroup))}</td>
+              <td>${t.taxableDefault !== false ? 'Yes' : 'No'}</td>
+              <td>${t.enabled === false
+                ? '<span class="badge badge-disabled">Disabled</span>'
+                : '<span class="badge badge-paid">Active</span>'}</td>
+              <td><div class="row-actions">
+                <button class="btn btn-sm btn-secondary" onclick="openLineItemTypeModal('${esc(t.key)}')">Edit</button>
+                ${t.enabled === false
+                  ? `<button class="btn btn-sm btn-secondary" onclick="setLineItemTypeEnabled('${esc(t.key)}', true)">Enable</button>`
+                  : `<button class="btn btn-sm btn-danger" onclick="removeLineItemType('${esc(t.key)}')">Remove</button>`}
+              </div></td>
+            </tr>`;
+          }).join('')}
+        </tbody></table>`;
+    }
+    function onLitRateSourceChange() {
+      const wrap = $('lit-default-rate-wrap');
+      if (wrap) wrap.style.display = $('lit-rate-source')?.value === 'fixed' ? '' : 'none';
+    }
+    function openLineItemTypeModal(key = null) {
+      state.editingLineItemKey = key || null;
+      $('lineitem-type-modal-title').textContent = key ? 'Edit Line Item Type' : 'Add Line Item Type';
+      const t = key ? getLineItemType(key) : null;
+      $('lit-label').value = t?.label || '';
+      $('lit-key').value = t?.key || '';
+      $('lit-key').readOnly = !!key;
+      $('lit-key-hint').textContent = key
+        ? 'Key is stored on invoices and cannot change.'
+        : 'Stored on invoices. Leave blank to generate from the name.';
+      $('lit-unit').value = t?.unit || '';
+      $('lit-rate-source').value = t?.rateSource || 'manual';
+      $('lit-default-rate').value = t?.defaultRate ?? 0;
+      $('lit-tax-group').value = t?.taxGroup || 'none';
+      $('lit-taxable').checked = t ? t.taxableDefault !== false : true;
+      onLitRateSourceChange();
+      if ($('lit-key')) $('lit-key').dataset.touched = key ? '1' : '';
+      if ($('lit-label')) {
+        $('lit-label').oninput = () => {
+          if (state.editingLineItemKey) return;
+          if ($('lit-key') && !$('lit-key').dataset.touched) {
+            $('lit-key').value = sanitizeLineItemKey($('lit-label').value);
+          }
+        };
+      }
+      if ($('lit-key')) {
+        $('lit-key').oninput = () => { $('lit-key').dataset.touched = '1'; };
+      }
+      $('lineitem-type-modal').classList.remove('hidden');
+      setTimeout(() => $('lit-label')?.focus(), 50);
+    }
+    function closeLineItemTypeModal() {
+      $('lineitem-type-modal').classList.add('hidden');
+      state.editingLineItemKey = null;
+    }
+    function saveLineItemType() {
+      const label = $('lit-label').value.trim();
+      if (!label) return toast('Name required', 'error');
+      const editingKey = state.editingLineItemKey;
+      let key = editingKey || uniqueLineItemKey($('lit-key').value.trim() || label);
+      if (!editingKey) {
+        if (!sanitizeLineItemKey($('lit-key').value.trim() || label)) return toast('Key must include letters or numbers', 'error');
+        key = uniqueLineItemKey($('lit-key').value.trim() || label);
+      }
+      const existing = getLineItemType(key);
+      const data = {
+        key,
+        label,
+        unit: $('lit-unit').value || '',
+        rateSource: $('lit-rate-source').value || 'manual',
+        defaultRate: Number($('lit-default-rate').value) || 0,
+        taxGroup: $('lit-tax-group').value || 'none',
+        taxableDefault: !!$('lit-taxable').checked,
+        enabled: existing ? existing.enabled !== false : true,
+        builtin: existing ? !!existing.builtin : false
+      };
+      const normalized = normalizeLineItemType(data);
+      if (!normalized) return toast('Could not save type', 'error');
+      if (!state.lineItemTypes) state.lineItemTypes = [];
+      const idx = state.lineItemTypes.findIndex(t => t.key === key);
+      if (idx >= 0) state.lineItemTypes[idx] = normalized;
+      else state.lineItemTypes.push(normalized);
+      saveState();
+      closeLineItemTypeModal();
+      renderLineItemTypes();
+      toast(editingKey ? 'Type updated' : 'Type added');
+    }
+    function setLineItemTypeEnabled(key, enabled) {
+      const t = getLineItemType(key);
+      if (!t) return;
+      if (!enabled) {
+        const active = (state.lineItemTypes || []).filter(x => x.enabled !== false && x.key !== key);
+        if (!active.length) return toast('Keep at least one active type', 'error');
+      }
+      t.enabled = !!enabled;
+      saveState();
+      renderLineItemTypes();
+      toast(enabled ? 'Type enabled' : 'Type disabled');
+    }
+    function removeLineItemType(key) {
+      const t = getLineItemType(key);
+      if (!t) return;
+      const used = lineItemTypeUsage(key);
+      const active = (state.lineItemTypes || []).filter(x => x.enabled !== false && x.key !== key);
+      if (used.invoices || used.time) {
+        const parts = [];
+        if (used.invoices) parts.push(used.lines + ' line' + (used.lines !== 1 ? 's' : '') + ' on ' + used.invoices + ' invoice' + (used.invoices !== 1 ? 's' : ''));
+        if (used.time) parts.push(used.time + ' time ' + (used.time !== 1 ? 'entries' : 'entry'));
+        if (!confirm('“' + t.label + '” is used on ' + parts.join(' and ') + '.\n\nDisable it instead of deleting so existing invoices keep this type?')) return;
+        if (!active.length) return toast('Keep at least one active type', 'error');
+        t.enabled = false;
+        saveState();
+        renderLineItemTypes();
+        toast('Type disabled — existing invoices unchanged');
+        return;
+      }
+      if (!confirm('Remove “' + t.label + '” from the catalog?')) return;
+      if (!active.length) return toast('Keep at least one active type', 'error');
+      state.lineItemTypes = state.lineItemTypes.filter(x => x.key !== key);
+      saveState();
+      renderLineItemTypes();
+      toast('Type removed');
     }
 
     // ---------- Settings ----------
