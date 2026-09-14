@@ -571,7 +571,7 @@
           <button class="btn btn-primary" onclick="openLineItemTypeModal()">Add Type</button>
         </div>
         <p style="font-size:13px;color:var(--text-muted);margin:-12px 0 20px;max-width:720px">
-          These types power the <strong>Item</strong> dropdown on New Invoice. Types already used on saved invoices are disabled rather than deleted, so old invoices keep their keys and labels.
+          These types power the <strong>Item</strong> dropdown on New Invoice (Labor, Travel Time, Travel Expense, After Hours, Mileage, Tech Support, Parts Sales, Materials / Parts, Other Expense, Custom). Types already used on saved invoices are disabled rather than deleted, so old invoices keep their keys and labels.
         </p>
         <div class="card" style="padding:0;overflow:hidden">
           <div id="lineitem-types-list"></div>
@@ -660,38 +660,12 @@
           </div>
 
           <div class="settings-section">
-            <h3>Multi-Device Sync</h3>
+            <h3>Manual Backup</h3>
             <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.5">
-              Your data lives in this browser by default. To see the <strong>same invoices &amp; clients on every device</strong>,
-              either run InvoiceFlow on a NAS (open <code>http://NAS-IP:8765</code>) or link a single JSON file inside
-              a synced folder (Dropbox, a NAS share, iCloud Drive, OneDrive, or Google Drive).
-              Every save writes to that file; other devices load from it.
+              Export a JSON copy of invoices, clients, and line item types, or import a backup on this browser.
+              NAS Docker already keeps shared data in <code>invoiceflow-data.json</code>.
             </p>
-            <div id="sync-status" class="card" style="padding:14px 16px;margin-bottom:14px;background:var(--surface2)">
-              <div style="font-size:13px"><strong>Status:</strong> <span id="sync-status-text">Not linked — data is local only</span></div>
-              <div style="font-size:12px;color:var(--text-muted);margin-top:4px" id="sync-status-detail"></div>
-            </div>
-            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
-              <button class="btn btn-primary" onclick="linkExistingSyncFile()">Link Existing Sync File</button>
-              <button class="btn btn-primary" onclick="createSyncFile()">Create New Sync File</button>
-              <button class="btn btn-secondary" onclick="pullFromSyncFile()">Load from Sync File</button>
-              <button class="btn btn-secondary" onclick="pushToSyncFile()">Save to Sync File Now</button>
-              <button class="btn btn-secondary" onclick="unlinkSyncFile()">Unlink</button>
-            </div>
-            <p style="font-size:12px;color:var(--text-muted);margin-bottom:20px;line-height:1.45">
-              <strong>NAS:</strong> copy this folder to the NAS and follow <code>docs/NAS.md</code>
-              (Docker or <em>Run InvoiceFlow NAS</em>). Then open <code>http://YOUR-NAS-IP:8765</code> —
-              sync is automatic, no file picker.
-              <br><br>
-              <strong>Desktop file (once per computer):</strong> Prefer <strong>Chrome or Edge</strong>.
-              Put <code>invoiceflow-data.json</code> in Dropbox or a NAS share
-              (or create one with <em>Create New Sync File</em>).
-              Then on each computer click <em>Link Existing Sync File</em> and pick that same file.
-              Click the button once — the file window must open immediately from that click (browsers block it after pop-ups).
-              On Safari without the NAS/server, use Export / Import instead.
-            </p>
-            <h3 style="margin-top:8px">Manual Backup</h3>
-            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px">
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
               <button class="btn btn-secondary" onclick="exportData()">Export JSON Backup</button>
               <label class="btn btn-secondary" style="cursor:pointer">
                 Import JSON Backup
@@ -699,7 +673,7 @@
               </label>
               <button class="btn btn-secondary" onclick="copyDataToClipboard()">Copy Data to Clipboard</button>
               <button class="btn btn-secondary" onclick="pasteDataFromClipboard()">Paste Data from Clipboard</button>
-              <button class="btn btn-danger" onclick="if(confirm('Delete ALL data on THIS browser? Sync file is not deleted.')) clearAllData()">Clear Local Data</button>
+              <button class="btn btn-danger" onclick="if(confirm('Delete ALL data on THIS browser? The NAS data file is not deleted.')) clearAllData()">Clear Local Data</button>
             </div>
           </div>
         </div>
@@ -937,13 +911,22 @@
     };
 
     const AUTO_RATE_SOURCES = ['labor', 'travel', 'afterhours', 'mileage'];
+    // Exact ITEM dropdown labels from the live New Invoice form.
     const LEGACY_TYPE_LABELS = {
-      labor: 'Labor', travel: 'Travel Time', travelexpense: 'Travel Expense',
-      afterhours: 'After Hours', mileage: 'Mileage', materials: 'Materials',
-      parts: 'Parts Sales', techsupport: 'Tech Support', other: 'Other', custom: 'Custom'
+      labor: 'Labor',
+      travel: 'Travel Time',
+      travelexpense: 'Travel Expense',
+      afterhours: 'After Hours',
+      mileage: 'Mileage',
+      techsupport: 'Tech Support',
+      parts: 'Parts Sales',
+      materials: 'Materials / Parts',
+      other: 'Other Expense',
+      custom: 'Custom (manual rate)'
     };
 
     function defaultLineItemTypes() {
+      // Seed matches the live ITEM dropdown, in the same order.
       return [
         { key: 'labor', label: 'Labor', unit: 'hr', rateSource: 'labor', defaultRate: 0, taxGroup: 'labor', taxableDefault: true, enabled: true, builtin: true },
         { key: 'travel', label: 'Travel Time', unit: 'hr', rateSource: 'travel', defaultRate: 0, taxGroup: 'labor', taxableDefault: true, enabled: true, builtin: true },
