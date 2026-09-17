@@ -268,6 +268,7 @@
     .badge-other { background: rgba(139,156,179,0.2); color: var(--text-muted); }
     .badge-afterhours { background: rgba(239,68,68,0.16); color: var(--badge-overdue-fg); }
     .badge-travelexpense { background: rgba(245,158,11,0.2); color: var(--badge-partial-fg); }
+    .badge-converted { background: rgba(16,185,129,0.16); color: var(--badge-paid-fg); }
     .row-actions { display: flex; gap: 6px; opacity: 1; flex-wrap: wrap; }
     tr:hover .row-actions { opacity: 1; }
     .empty { text-align: center; padding: 48px 20px; color: var(--text); }
@@ -709,6 +710,14 @@
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
         New Invoice
       </button>
+      <button class="nav-btn" data-page="estimates">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Estimates
+      </button>
+      <button class="nav-btn" data-page="create-estimate">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        New Estimate
+      </button>
       <button class="nav-btn" data-page="clients">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
         Clients
@@ -803,6 +812,32 @@
         </div>
       </div>
 
+      <!-- ==================== ESTIMATES ==================== -->
+      <div id="page-estimates" class="page hidden">
+        <div class="page-header">
+          <div>
+            <h2>Estimates</h2>
+            <p>Manage quotes before they become invoices</p>
+          </div>
+          <button class="btn btn-primary" onclick="startNewEstimate()">New Estimate</button>
+        </div>
+        <div class="filters">
+          <div class="search-box">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="text" id="search-estimates" placeholder="Search by number, client, or notes..." oninput="renderEstimates()" />
+          </div>
+          <select id="filter-estimate-status" onchange="renderEstimates()" style="width:auto;min-width:140px">
+            <option value="all">All Statuses</option>
+            <option value="draft">Draft</option>
+            <option value="sent">Sent</option>
+            <option value="converted">Converted</option>
+          </select>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <div id="estimates-list"></div>
+        </div>
+      </div>
+
       <!-- ==================== CREATE INVOICE ==================== -->
       <div id="page-create" class="page hidden">
         <div class="page-header">
@@ -811,15 +846,16 @@
             <p>Fill in the details below</p>
           </div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <button class="btn btn-secondary" onclick="navigate('invoices')">Cancel</button>
+            <button class="btn btn-secondary" id="create-cancel-btn" onclick="navigate('invoices')">Cancel</button>
             <button class="btn btn-secondary" onclick="saveInvoice(true)">Save Draft</button>
             <button class="btn btn-primary" onclick="saveInvoice(false)">Save & Close</button>
+            <button class="btn btn-success hidden" id="create-convert-btn" onclick="convertCurrentEstimate()">Convert to Invoice</button>
           </div>
         </div>
         <div class="card">
           <div class="form-grid">
             <div class="form-group">
-              <label>Invoice Number</label>
+              <label id="inv-number-label">Invoice Number</label>
               <input type="text" id="inv-number" placeholder="INV-001" />
             </div>
             <div class="form-group">
@@ -840,7 +876,7 @@
               <label>Due Date (YY-MM-DD)</label>
               <input type="text" id="inv-due" class="date-yymmdd" placeholder="26-10-17" maxlength="10" inputmode="numeric" autocomplete="off" />
             </div>
-            <div class="form-group">
+            <div class="form-group create-invoice-only">
               <label>Paid On (YY-MM-DD)</label>
               <input type="text" id="inv-paid-on" class="date-yymmdd" placeholder="26-09-14" maxlength="10" inputmode="numeric" autocomplete="off" />
             </div>
@@ -901,11 +937,11 @@
                 <input type="number" id="inv-discount" value="0" min="0" step="0.01" inputmode="decimal" style="width:80px;text-align:right" oninput="recalcTotals()" />
               </div>
               <div class="total-row grand"><span>Total</span><span class="value" id="grand-total">$0.00</span></div>
-              <div class="total-row" style="align-items:center;gap:12px;margin-top:8px">
+              <div class="total-row create-invoice-only" style="align-items:center;gap:12px;margin-top:8px">
                 <span>Amount Paid</span>
                 <input type="number" id="inv-paid" value="0" min="0" step="0.01" inputmode="decimal" style="width:100px;text-align:right" oninput="recalcTotals()" />
               </div>
-              <div class="total-row"><span>Balance Due</span><span class="value" id="balance-due">$0.00</span></div>
+              <div class="total-row create-invoice-only"><span>Balance Due</span><span class="value" id="balance-due">$0.00</span></div>
             </div>
           </div>
           <div class="form-group full" style="margin-top:24px">
@@ -1251,7 +1287,7 @@
   <div id="preview-modal" class="modal-overlay hidden">
     <div class="modal" style="max-width:860px">
       <div class="modal-header no-print">
-        <h3>Invoice Preview</h3>
+        <h3 id="preview-modal-title">Invoice Preview</h3>
         <div style="display:flex;gap:8px">
           <button class="btn btn-success" onclick="printInvoice()">Print / Save PDF</button>
           <button class="btn btn-icon btn-secondary" onclick="closePreview()">
@@ -1292,9 +1328,12 @@
       },
       clients: [],
       invoices: [],
+      estimates: [],
       timeEntries: [],
       lineItemTypes: [],
       nextInvNum: 1,
+      nextEstNum: 1,
+      docKind: 'invoice',
       editingId: null,
       editingClientId: null,
       editingTimeId: null,
@@ -1466,12 +1505,14 @@
         business: state.business,
         clients: state.clients,
         invoices: state.invoices,
+        estimates: state.estimates || [],
         timeEntries: state.timeEntries || [],
         lineItemTypes: state.lineItemTypes || defaultLineItemTypes(),
         nextInvNum: state.nextInvNum,
+        nextEstNum: state.nextEstNum || 1,
         updatedAt: new Date().toISOString(),
         app: 'invoiceflow',
-        version: 4
+        version: 5
       };
     }
     function applyData(data, { silent } = {}) {
@@ -1489,8 +1530,10 @@
         state.business.website = state.business.website || PRINT_HEADER.website;
       }
       state.invoices = (data.invoices || []).map(migrateInvoice);
+      state.estimates = (data.estimates || []).map(migrateEstimate);
       state.timeEntries = (data.timeEntries || []).map(migrateTimeEntry);
       state.nextInvNum = data.nextInvNum || 1;
+      state.nextEstNum = data.nextEstNum || 1;
       state.selectedTimeIds = new Set();
       if (!state.business.laborRate) state.business.laborRate = 75;
       if (!state.business.travelRate) state.business.travelRate = 50;
@@ -2010,6 +2053,22 @@
         })
       };
     }
+    function migrateEstimate(est) {
+      const next = migrateInvoice(est);
+      if (!next || typeof next !== 'object') return next;
+      next.kind = 'estimate';
+      if (est && est.convertedInvoiceId) next.convertedInvoiceId = est.convertedInvoiceId;
+      return next;
+    }
+    function isEstimateMode() { return state.docKind === 'estimate'; }
+    function docWord() { return isEstimateMode() ? 'Estimate' : 'Invoice'; }
+    function currentDocs() { return isEstimateMode() ? state.estimates : state.invoices; }
+    function estimatePrefix() { return 'EST-'; }
+    function findDocById(id) {
+      return (state.invoices || []).find(i => i.id === id)
+        || (state.estimates || []).find(i => i.id === id)
+        || null;
+    }
     function migrateTimeEntry(e) {
       if (!e || typeof e !== 'object') return e;
       return { ...e, date: toYYMMDD(e.date) || e.date || '' };
@@ -2162,11 +2221,13 @@
       document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
       const el = $('page-' + page);
       if (el) el.classList.remove('hidden');
-      const btn = document.querySelector('.nav-btn[data-page="' + page + '"]');
+      const navPage = (page === 'create' && isEstimateMode()) ? 'create-estimate' : page;
+      const btn = document.querySelector('.nav-btn[data-page="' + navPage + '"]');
       if (btn) btn.classList.add('active');
       setSidebarOpen(false);
       if (page === 'dashboard') renderDashboard();
       if (page === 'invoices') renderInvoices();
+      if (page === 'estimates') renderEstimates();
       if (page === 'create') initCreateForm();
       if (page === 'clients') renderClients();
       if (page === 'lineitems') renderLineItemTypes();
@@ -2175,6 +2236,7 @@
     document.querySelectorAll('.nav-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         if (btn.dataset.page === 'create') startNewInvoice();
+        else if (btn.dataset.page === 'create-estimate') startNewEstimate();
         else navigate(btn.dataset.page);
       });
     });
@@ -2513,6 +2575,10 @@
       return calcInvoiceParts(inv).total;
     }
     function getStatus(inv) {
+      if (inv.kind === 'estimate' || inv.status === 'converted') {
+        if (inv.status === 'converted' || inv.convertedInvoiceId) return 'converted';
+        return inv.status || 'draft';
+      }
       if (inv.status === 'paid' || inv.status === 'draft' || inv.status === 'partial') return inv.status;
       const total = calcInvoiceTotal(inv);
       const paid = Number(inv.amountPaid||0);
@@ -2553,6 +2619,57 @@
         </tbody></table>`;
     }
 
+    function renderEstimateTable(list) {
+      if (!list.length) {
+        return `<div class="empty"><h3>No estimates found</h3><p>Create your first estimate</p></div>`;
+      }
+      return `<table class="invoice-table stack-on-mobile">
+        <thead><tr>
+          <th>Number</th><th>Client</th><th>Date</th><th>Due</th><th>Amount</th><th>Status</th><th style="width:220px">Actions</th>
+        </tr></thead>
+        <tbody>
+          ${list.map(est => {
+            const converted = est.status === 'converted' || est.convertedInvoiceId;
+            return `<tr>
+              <td class="mono" data-label="Number">${esc(est.number)}</td>
+              <td data-label="Client">${esc(est.clientName || '—')}</td>
+              <td data-label="Date">${esc(formatDate(est.date) || '—')}</td>
+              <td data-label="Due">${esc(formatDate(est.dueDate) || '—')}</td>
+              <td class="mono" data-label="Amount">${money(calcInvoiceTotal(est))}</td>
+              <td data-label="Status">${statusBadgeHTML(est)}</td>
+              <td data-label="Actions"><div class="row-actions">
+                <button class="btn btn-sm btn-secondary" onclick="previewInvoice('${est.id}')">PDF</button>
+                <button class="btn btn-sm btn-secondary" onclick="editEstimate('${est.id}')">Edit</button>
+                <button class="btn btn-sm btn-success" onclick="convertEstimateToInvoice('${est.id}')" ${converted ? 'disabled' : ''}>${converted ? 'Converted' : 'Convert'}</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteEstimate('${est.id}')">Delete</button>
+              </div></td>
+            </tr>`;
+          }).join('')}
+        </tbody></table>`;
+    }
+
+    function renderEstimates() {
+      let list = [...(state.estimates || [])];
+      const q = ($('search-estimates')?.value || '').toLowerCase().trim();
+      const st = $('filter-estimate-status')?.value || 'all';
+      if (q) list = list.filter(i =>
+        (i.number||'').toLowerCase().includes(q) ||
+        (i.clientName||'').toLowerCase().includes(q) ||
+        (i.notes||'').toLowerCase().includes(q)
+      );
+      if (st !== 'all') list = list.filter(i => getStatus(i) === st);
+      list.sort((a,b) => (b.date||'').localeCompare(a.date||''));
+      $('estimates-list').innerHTML = renderEstimateTable(list);
+    }
+
+    function deleteEstimate(id) {
+      if (!confirm('Delete this estimate?')) return;
+      state.estimates = (state.estimates || []).filter(i => i.id !== id);
+      saveState();
+      renderEstimates();
+      toast('Estimate deleted');
+    }
+
     function renderInvoices() {
       let list = [...state.invoices];
       const q = ($('search-invoices')?.value || '').toLowerCase().trim();
@@ -2582,22 +2699,74 @@
     // ---------- Create / Edit Invoice ----------
     function startNewInvoice() {
       window._pendingBillEntries = null;
-      if (_currentPage === 'create') {
+      if (_currentPage === 'create' && !isEstimateMode()) {
         flushAutosave();
         return;
       }
       flushAutosave();
+      state.docKind = 'invoice';
       state.editingId = null;
       navigate('create');
     }
 
+    function startNewEstimate() {
+      window._pendingBillEntries = null;
+      if (_currentPage === 'create' && isEstimateMode()) {
+        flushAutosave();
+        return;
+      }
+      flushAutosave();
+      state.docKind = 'estimate';
+      state.editingId = null;
+      navigate('create');
+    }
+
+    function syncCreateFormChrome() {
+      const est = isEstimateMode();
+      const word = docWord();
+      if ($('inv-number-label')) $('inv-number-label').textContent = word + ' Number';
+      if ($('inv-number')) {
+        $('inv-number').placeholder = est ? 'EST-001' : 'INV-001';
+        $('inv-number').title = word + ' numbers are unique — like a filename';
+      }
+      if ($('create-cancel-btn')) {
+        $('create-cancel-btn').onclick = () => navigate(est ? 'estimates' : 'invoices');
+      }
+      document.querySelectorAll('.create-invoice-only').forEach(el => {
+        el.style.display = est ? 'none' : '';
+      });
+      const sel = $('inv-status');
+      if (sel) {
+        const cur = sel.value;
+        if (est) {
+          sel.innerHTML = '<option value="draft">Draft</option><option value="sent">Sent</option><option value="converted">Converted</option>';
+          if (cur === 'converted') sel.value = 'converted';
+          else sel.value = (cur === 'sent') ? 'sent' : 'draft';
+          sel.querySelector('option[value="converted"]').disabled = true;
+        } else {
+          sel.innerHTML = '<option value="draft">Draft</option><option value="sent">Sent</option><option value="paid">Paid</option><option value="partial">Partial</option><option value="overdue">Overdue</option>';
+          if (['draft','sent','paid','partial','overdue'].includes(cur)) sel.value = cur;
+          else sel.value = 'draft';
+        }
+      }
+      const convertBtn = $('create-convert-btn');
+      if (convertBtn) {
+        const editing = est && state.editingId;
+        const doc = editing ? (state.estimates || []).find(e => e.id === state.editingId) : null;
+        const already = !!(doc && (doc.status === 'converted' || doc.convertedInvoiceId));
+        convertBtn.classList.toggle('hidden', !editing);
+        convertBtn.disabled = already;
+        convertBtn.textContent = already ? 'Converted' : 'Convert to Invoice';
+      }
+    }
+
     function fillCreateFormFromInvoice(inv) {
       if (!inv) return;
+      const word = docWord();
       $('create-title').textContent = (inv.status === 'draft' && !inv.clientName && !(inv.items || []).length)
-        ? 'New Invoice'
-        : 'Edit Invoice ' + (inv.number || '');
+        ? 'New ' + word
+        : 'Edit ' + word + ' ' + (inv.number || '');
       $('inv-number').readOnly = false;
-      $('inv-number').title = 'Invoice numbers are unique — like a filename';
       $('inv-number').value = inv.number || '';
       $('inv-status').value = inv.status || 'draft';
       $('inv-date').value = formatDate(inv.date) || today();
@@ -2616,14 +2785,20 @@
       const match = state.clients.find(c => c.name === inv.clientName);
       if (match) { $('inv-client').value = match.id; showClientRatesHint(match); }
       else showClientRatesHint(getSelectedInvoiceClient());
+      syncCreateFormChrome();
+      if (isEstimateMode() && (inv.status === 'converted' || inv.convertedInvoiceId)) {
+        $('inv-status').value = 'converted';
+      }
       recalcTotals();
     }
 
     function resetCreateForm() {
-      $('create-title').textContent = 'New Invoice';
+      const word = docWord();
+      $('create-title').textContent = 'New ' + word;
       $('inv-number').readOnly = false;
-      $('inv-number').title = 'Invoice numbers are unique — like a filename';
-      $('inv-number').value = (state.business.prefix || 'INV-') + String(state.nextInvNum).padStart(3, '0');
+      $('inv-number').value = isEstimateMode()
+        ? estimatePrefix() + String(state.nextEstNum || 1).padStart(3, '0')
+        : (state.business.prefix || 'INV-') + String(state.nextInvNum).padStart(3, '0');
       $('inv-status').value = 'draft';
       $('inv-date').value = today();
       $('inv-due').value = addDays(today(), 30);
@@ -2639,19 +2814,21 @@
       addLineItem();
       showClientRatesHint(null);
       populateClientSelect();
+      syncCreateFormChrome();
       recalcTotals();
     }
 
     function initCreateForm() {
       _createFormReady = false;
       if (state.editingId) {
-        const inv = state.invoices.find(i => i.id === state.editingId);
+        const inv = currentDocs().find(i => i.id === state.editingId);
         if (inv) fillCreateFormFromInvoice(inv);
         else resetCreateForm();
       } else if (!window._pendingBillEntries) {
         resetCreateForm();
       } else {
         populateClientSelect();
+        syncCreateFormChrome();
         recalcTotals();
       }
       bindDateInputs(document);
@@ -2662,8 +2839,64 @@
       const inv = state.invoices.find(i => i.id === id);
       if (!inv) return;
       window._pendingBillEntries = null;
+      state.docKind = 'invoice';
       state.editingId = id;
       navigate('create');
+    }
+
+    function editEstimate(id) {
+      const est = (state.estimates || []).find(i => i.id === id);
+      if (!est) return;
+      window._pendingBillEntries = null;
+      state.docKind = 'estimate';
+      state.editingId = id;
+      navigate('create');
+    }
+
+    function convertCurrentEstimate() {
+      if (!state.editingId) return;
+      convertEstimateToInvoice(state.editingId);
+    }
+
+    function convertEstimateToInvoice(id) {
+      const est = (state.estimates || []).find(e => e.id === id);
+      if (!est) return;
+      if (est.convertedInvoiceId || est.status === 'converted') {
+        const existing = state.invoices.find(i => i.id === est.convertedInvoiceId);
+        toast(existing ? ('Already converted to ' + existing.number) : 'This estimate was already converted');
+        return;
+      }
+      if (!confirm('Convert estimate ' + (est.number || '') + ' to an invoice?')) return;
+      if (_currentPage === 'create') flushAutosave();
+      const number = (state.business.prefix || 'INV-') + String(state.nextInvNum).padStart(3, '0');
+      const inv = {
+        id: uid(),
+        kind: 'invoice',
+        number,
+        status: 'draft',
+        date: est.date || today(),
+        dueDate: est.dueDate || '',
+        clientName: est.clientName || '',
+        clientAddress: est.clientAddress || '',
+        items: (est.items || []).map(it => ({ ...it, id: it.id || uid() })),
+        taxRate: est.taxRate || 0,
+        discount: est.discount || 0,
+        amountPaid: 0,
+        paidAt: '',
+        notes: est.notes || '',
+        estimateId: est.id,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      state.invoices.push(inv);
+      const numPart = parseInt(number.replace(/\D/g, ''), 10);
+      if (!isNaN(numPart) && numPart >= state.nextInvNum) state.nextInvNum = numPart + 1;
+      est.status = 'converted';
+      est.convertedInvoiceId = inv.id;
+      est.updatedAt = new Date().toISOString();
+      saveState();
+      toast('Invoice ' + number + ' created from estimate');
+      editInvoice(inv.id);
     }
 
     function populateClientSelect() {
@@ -2883,8 +3116,10 @@
 
     function persistInvoiceFromForm({ strict, keepOpen, quiet } = {}) {
       const number = $('inv-number')?.value?.trim();
+      const word = docWord();
+      const list = currentDocs();
       if (!number) {
-        if (strict) toast('Invoice number required', 'error');
+        if (strict) toast(word + ' number required', 'error');
         return null;
       }
       const clientName = $('inv-client-name')?.value?.trim() || '';
@@ -2895,24 +3130,25 @@
       }
 
       let existingIdx = -1;
-      if (state.editingId) existingIdx = state.invoices.findIndex(i => i.id === state.editingId);
-      if (existingIdx < 0) existingIdx = state.invoices.findIndex(i => i.number === number);
+      if (state.editingId) existingIdx = list.findIndex(i => i.id === state.editingId);
+      if (existingIdx < 0) existingIdx = list.findIndex(i => i.number === number);
       if (state.editingId && existingIdx >= 0) {
-        const byNumber = state.invoices.find(i => i.number === number && i.id !== state.editingId);
+        const byNumber = list.find(i => i.number === number && i.id !== state.editingId);
         if (byNumber) {
-          if (strict) toast('Invoice number "' + number + '" already exists. Numbers are unique.', 'error');
+          if (strict) toast(word + ' number "' + number + '" already exists. Numbers are unique.', 'error');
           return null;
         }
-        existingIdx = state.invoices.findIndex(i => i.id === state.editingId);
+        existingIdx = list.findIndex(i => i.id === state.editingId);
       }
 
-      const prev = existingIdx >= 0 ? state.invoices[existingIdx] : {};
+      const prev = existingIdx >= 0 ? list[existingIdx] : {};
       const taxRate = Number($('inv-tax')?.value) || 0;
       const discount = Number($('inv-discount')?.value) || 0;
-      const amountPaid = Number($('inv-paid')?.value) || 0;
-      const status = $('inv-status')?.value || 'draft';
+      const amountPaid = isEstimateMode() ? 0 : (Number($('inv-paid')?.value) || 0);
+      let status = $('inv-status')?.value || 'draft';
+      if (isEstimateMode() && prev.status === 'converted') status = 'converted';
       const parts = calcInvoiceParts({ items, taxRate, discount });
-      const nowPaid = status === 'paid' || amountPaid >= parts.total - 0.01;
+      const nowPaid = !isEstimateMode() && (status === 'paid' || amountPaid >= parts.total - 0.01);
       let paidAt = toPaidAt($('inv-paid-on')?.value || '');
       if (nowPaid) {
         if (!paidAt) paidAt = paidOnDate(prev) || todayPaidAt();
@@ -2923,6 +3159,7 @@
       const inv = {
         ...prev,
         id: existingIdx >= 0 ? prev.id : uid(),
+        kind: isEstimateMode() ? 'estimate' : 'invoice',
         number,
         status: status || 'draft',
         date: toYYMMDD($('inv-date')?.value) || today(),
@@ -2939,17 +3176,22 @@
         updatedAt: new Date().toISOString()
       };
       delete inv.paidOn;
+      if (!isEstimateMode()) delete inv.convertedInvoiceId;
 
       if (existingIdx >= 0) {
-        state.invoices[existingIdx] = inv;
+        list[existingIdx] = inv;
       } else {
-        state.invoices.push(inv);
+        list.push(inv);
         const numPart = parseInt(number.replace(/\D/g, ''), 10);
-        if (!isNaN(numPart) && numPart >= state.nextInvNum) state.nextInvNum = numPart + 1;
+        if (isEstimateMode()) {
+          if (!isNaN(numPart) && numPart >= state.nextEstNum) state.nextEstNum = numPart + 1;
+        } else if (!isNaN(numPart) && numPart >= state.nextInvNum) {
+          state.nextInvNum = numPart + 1;
+        }
       }
       state.editingId = inv.id;
 
-      if (!quiet && window._pendingBillEntries && window._pendingBillEntries.length) {
+      if (!quiet && !isEstimateMode() && window._pendingBillEntries && window._pendingBillEntries.length) {
         window._pendingBillEntries.forEach(tid => {
           const e = state.timeEntries.find(x => x.id === tid);
           if (e) { e.billed = true; e.invoiceId = inv.id; }
@@ -2979,13 +3221,15 @@
     function saveInvoice(keepOpen) {
       const inv = persistInvoiceFromForm({ strict: true, keepOpen, quiet: false });
       if (!inv) return;
-      toast('Invoice saved');
+      const word = docWord();
+      toast(word + ' saved');
       if (!keepOpen) {
         _createFormReady = false;
         state.editingId = null;
-        navigate('invoices');
+        navigate(isEstimateMode() ? 'estimates' : 'invoices');
       } else {
-        $('create-title').textContent = 'Edit Invoice ' + inv.number;
+        $('create-title').textContent = 'Edit ' + word + ' ' + inv.number;
+        syncCreateFormChrome();
       }
     }
 
@@ -3316,7 +3560,7 @@
             <div>${esc(PRINT_HEADER.website)}</div>
           </div>
           <div class="preview-meta">
-            <div class="inv-num">${esc(inv.number)}</div>
+            <div class="inv-num">${inv.kind === 'estimate' ? 'Estimate' : esc(inv.number)}</div>
             <div>${statusBadgeHTML(inv)}</div>
             <div style="font-size:16px;color:#000">
               <div><strong>Issue:</strong> ${esc(formatDate(inv.date) || '—')}</div>
@@ -3389,10 +3633,13 @@
         </div>` : ''}`;
     }
     function previewInvoice(id) {
-      const inv = state.invoices.find(i => i.id === id);
+      const inv = findDocById(id);
       if (!inv) return;
       window._previewInv = inv;
       $('preview-content').innerHTML = buildPreviewHTML(inv);
+      if ($('preview-modal-title')) {
+        $('preview-modal-title').textContent = inv.kind === 'estimate' ? 'Estimate Preview' : 'Invoice Preview';
+      }
       $('preview-modal').classList.remove('hidden');
     }
     function closePreview() {
@@ -3459,7 +3706,8 @@
         const text = await navigator.clipboard.readText();
         const data = JSON.parse(text);
         const nInv = (data.invoices || []).length;
-        if (!confirm('Paste clipboard data?\n\n' + nInv + ' invoices found. Replaces local data.')) return;
+        const nEst = (data.estimates || []).length;
+        if (!confirm('Paste clipboard data?\n\n' + nInv + ' invoices, ' + nEst + ' estimates. Replaces local data.')) return;
         applyData(data);
         navigate('dashboard');
       } catch (e) {
@@ -3468,9 +3716,11 @@
     }
     function clearAllData() {
       state.invoices = [];
+      state.estimates = [];
       state.clients = [];
       state.timeEntries = [];
       state.nextInvNum = 1;
+      state.nextEstNum = 1;
       state.selectedTimeIds = new Set();
       saveState();
       navigate('dashboard');
