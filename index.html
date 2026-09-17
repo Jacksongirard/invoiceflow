@@ -1310,6 +1310,7 @@
       phone: '254-291-0941',
       website: 'www.automatedrx.com'
     };
+    const ESTIMATE_TERMS = 'Estimate is valid for 30 days.';
     const THEME_KEY = 'invoiceflow_theme';
     const STORAGE_KEY = 'invoiceflow_data_v3';
     let state = {
@@ -2064,6 +2065,16 @@
     function docWord() { return isEstimateMode() ? 'Estimate' : 'Invoice'; }
     function currentDocs() { return isEstimateMode() ? state.estimates : state.invoices; }
     function estimatePrefix() { return 'EST-'; }
+    function printNotes(inv) {
+      const raw = (inv && inv.notes) || '';
+      if (inv && inv.kind === 'estimate') {
+        const invoiceTerms = ((state.business && state.business.terms) || '').trim();
+        if (!raw.trim() || raw.trim() === invoiceTerms || /payment is due within 30 days/i.test(raw)) {
+          return ESTIMATE_TERMS;
+        }
+      }
+      return raw;
+    }
     function findDocById(id) {
       return (state.invoices || []).find(i => i.id === id)
         || (state.estimates || []).find(i => i.id === id)
@@ -2777,7 +2788,7 @@
       $('inv-discount').value = inv.discount || 0;
       $('inv-paid').value = inv.amountPaid || 0;
       if ($('inv-paid-on')) $('inv-paid-on').value = paidOnDate(inv);
-      $('inv-notes').value = inv.notes || '';
+      $('inv-notes').value = (isEstimateMode() && printNotes({ ...inv, kind: 'estimate' })) || inv.notes || '';
       $('line-items').innerHTML = '';
       (inv.items || []).forEach(it => addLineItem(it));
       if (!(inv.items || []).length) addLineItem();
@@ -2809,7 +2820,7 @@
       $('inv-discount').value = 0;
       $('inv-paid').value = 0;
       if ($('inv-paid-on')) $('inv-paid-on').value = '';
-      $('inv-notes').value = state.business.terms || '';
+      $('inv-notes').value = isEstimateMode() ? ESTIMATE_TERMS : (state.business.terms || '');
       $('line-items').innerHTML = '';
       addLineItem();
       showClientRatesHint(null);
@@ -2883,7 +2894,9 @@
         discount: est.discount || 0,
         amountPaid: 0,
         paidAt: '',
-        notes: est.notes || '',
+        notes: (/payment is due within 30 days/i.test(est.notes || '') || (est.notes || '').trim() === ESTIMATE_TERMS)
+          ? (state.business.terms || '')
+          : (est.notes || ''),
         estimateId: est.id,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -3560,7 +3573,7 @@
             <div>${esc(PRINT_HEADER.website)}</div>
           </div>
           <div class="preview-meta">
-            <div class="inv-num">${inv.kind === 'estimate' ? 'Estimate' : esc(inv.number)}</div>
+            <div class="inv-num">${inv.kind === 'estimate' ? ('Estimate ' + esc(inv.number || '')).trim() : esc(inv.number)}</div>
             <div>${statusBadgeHTML(inv)}</div>
             <div style="font-size:16px;color:#000">
               <div><strong>Issue:</strong> ${esc(formatDate(inv.date) || '—')}</div>
@@ -3571,7 +3584,7 @@
         </div>
         <div class="preview-parties">
           <div>
-            <h4>Bill To</h4>
+            <h4>${inv.kind === 'estimate' ? 'Estimate for' : 'Bill To'}</h4>
             <strong style="font-size:17px;color:#000">${esc(inv.clientName)}</strong>
             <div style="white-space:pre-line;color:#000;margin-top:4px">${esc(inv.clientAddress || '')}</div>
           </div>
@@ -3627,9 +3640,9 @@
             <tr><td><strong>Balance Due</strong></td><td style="text-align:right"><strong>${money(bal)}</strong></td></tr>` : ''}
           </table>
         </div>
-        ${inv.notes ? `<div style="margin-top:32px;padding-top:16px;border-top:1px solid #000">
+        ${printNotes(inv) ? `<div style="margin-top:32px;padding-top:16px;border-top:1px solid #000">
           <h4 style="font-size:15px;text-transform:uppercase;color:#000;margin-bottom:6px">Notes & Terms</h4>
-          <div style="white-space:pre-line;color:#000;font-size:15px">${esc(inv.notes)}</div>
+          <div style="white-space:pre-line;color:#000;font-size:15px">${esc(printNotes(inv))}</div>
         </div>` : ''}`;
     }
     function previewInvoice(id) {
