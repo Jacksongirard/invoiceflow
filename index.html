@@ -328,6 +328,7 @@
     }
     .preview-meta { text-align: right; margin-top: 16px; width: 100%; }
     .preview-meta .inv-num { font-size: 20px; font-weight: 700; color: #000; }
+    .preview-meta .badge { padding-left: 0; padding-right: 0; }
     .preview-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
     .preview-parties h4 {
       font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;
@@ -3316,8 +3317,8 @@
           </div>
           <div class="preview-meta">
             <div class="inv-num">${esc(inv.number)}</div>
-            <div style="margin-top:8px">${statusBadgeHTML(inv)}</div>
-            <div style="margin-top:12px;font-size:16px;color:#000">
+            <div>${statusBadgeHTML(inv)}</div>
+            <div style="font-size:16px;color:#000">
               <div><strong>Issue:</strong> ${esc(formatDate(inv.date) || '—')}</div>
               <div><strong>Due:</strong> ${esc(formatDate(inv.dueDate) || '—')}</div>
               ${st === 'paid' && paidDate ? `<div><strong>Paid:</strong> ${esc(formatDate(paidDate))}</div>` : ''}
