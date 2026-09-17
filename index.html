@@ -623,7 +623,8 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
     @media print {
-      @page { margin: 0.5in; size: letter; }
+      /* Zero @page margin so Chrome does not draw date/title/URL/page-number chrome. */
+      @page { margin: 0; size: letter; }
       html, body {
         background: #fff !important;
         color: #000 !important;
@@ -665,7 +666,7 @@
         box-shadow: none !important;
       }
       #print-area .invoice-preview {
-        padding: 0 !important;
+        padding: 0.5in !important;
         margin: 0 !important;
         max-width: none !important;
         box-shadow: none !important;
@@ -3403,18 +3404,8 @@
         ${html}
       </div>`;
       printEl.classList.remove('hidden');
-      const prevTitle = document.title;
-      // Replace the document title so browser print chrome (if still shown)
-      // reads "printed <date/time>" instead of "InvoiceFlow - Creator & Tracker".
-      document.title = 'printed ' + stamp;
-      const restoreTitle = () => {
-        document.title = prevTitle || 'InvoiceFlow';
-        window.removeEventListener('afterprint', restoreTitle);
-      };
-      window.addEventListener('afterprint', restoreTitle);
       setTimeout(() => {
         window.print();
-        restoreTitle();
         printEl.classList.add('hidden');
         printEl.innerHTML = '';
       }, 100);
