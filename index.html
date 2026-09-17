@@ -320,8 +320,13 @@
     .invoice-preview h1 { font-size: 32px; color: #000; margin-bottom: 4px; font-weight: 700; }
     .print-biz-header { color: #000; font-size: 17px; line-height: 1.45; margin-bottom: 8px; }
     .print-biz-header .print-biz-name { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
-    .preview-header { display: flex; justify-content: space-between; margin-bottom: 32px; }
-    .preview-meta { text-align: right; }
+    .preview-header {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      margin-bottom: 32px;
+    }
+    .preview-meta { text-align: left; margin-top: 16px; }
     .preview-meta .inv-num { font-size: 24px; font-weight: 700; color: #000; }
     .preview-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
     .preview-parties h4 {
