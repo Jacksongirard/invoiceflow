@@ -13,9 +13,26 @@ A single-file web app — no install, no account, no server. Just open it in you
 ### Invoicing
 - Create professional invoices with line items, tax, discounts, partial payments
 - Status tracking: Draft → Sent → Paid / Partial / Overdue (auto-detected)
+- **Parts Sales** percentage markup: enter % on the invoice and check **Apply** on cost lines (works on iPhone)
+- **Auto-save drafts** on New Invoice as soon as you type anything — navigating away does not lose the invoice
+- Dates everywhere use **YY-MM-DD** (example: 26-09-17)
+- Printed invoices use a fixed letterhead:
+  - Automated Rx, Inc.
+  - 2502 W FM 580, Lampasas, TX 76550
+  - 254-291-0941
+  - www.automatedrx.com
 - Client directory
-- PDF export via browser Print → Save as PDF
+- PDF export via browser Print → Save as PDF (one page of invoice, no trailing blank pages)
 - Business branding (name, address, Tax ID, currency, invoice prefix, terms)
+
+### Theme & phones
+- Light/dark theme toggle in the sidebar, mobile top bar, and Settings → Appearance
+- Preference is saved on this device (`localStorage`) so a NAS/Dropbox pull does not flip other screens
+- iPhone Safari: 16px+ inputs (no zoom-on-focus), decimal keypad on amounts, 44px tap targets
+- Line items stack as full-width cards on phones so **Parts Sales** markup % stays usable
+- Hamburger nav with backdrop; invoices, clients, and types stack as cards on a narrow screen
+- All UI text is black in light theme (white in dark theme) — no grey or colored copy
+- Printed invoice stays paper-white with black type, one size larger
 
 ### Time & Labor Tracker
 - Quick-log labor hours, travel time, mileage, materials, and expenses
